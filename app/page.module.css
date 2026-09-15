@@ -151,6 +151,11 @@
   white-space: nowrap;
 }
 
+/* Luft mellem beløbskolonnerne, så tal ikke løber sammen på små skærme. */
+.amount + .amount {
+  padding-left: 1rem;
+}
+
 .table tbody tr:last-child th,
 .table tbody tr:last-child td {
   border-bottom: none;
