@@ -2,14 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { calculate, type CalculationInput } from '@/lib/calculate';
-import {
-  ANNUAL_GIFT_ALLOWANCE,
-  GIFT_YEARS,
-  PRICE_FACTOR,
-  PUBLIC_VALUATION,
-  PURCHASE_PRICE,
-  SHARE_FRACTION,
-} from '@/lib/constants';
+import { PUBLIC_VALUATION, PURCHASE_PRICE } from '@/lib/constants';
+import { explain } from '@/lib/explanations';
+import { fmt } from '@/lib/format';
 import styles from './page.module.css';
 
 type FieldName = keyof CalculationInput;
@@ -55,11 +50,6 @@ const OWN_FINANCING_MESSAGE = `Egenfinansiering kan højst være købesummen på
   PURCHASE_PRICE,
 )} kr.`;
 
-/** Afrunder til hele kroner og formaterer dansk. */
-function fmt(value: number): string {
-  return Math.round(value).toLocaleString('da-DK');
-}
-
 /** Parser et inputfelt. Returnerer null hvis feltet ikke er et tal. */
 function parse(raw: string): number | null {
   const trimmed = raw.trim();
@@ -84,6 +74,32 @@ function errorsFor(raw: Record<FieldName, string>): string[] {
   return messages;
 }
 
+function LedgerRow({
+  label,
+  amount,
+  explanation,
+  total = false,
+}: {
+  label: string;
+  amount: number;
+  explanation: string;
+  total?: boolean;
+}) {
+  return (
+    <>
+      <tr className={`${styles.rowMain}${total ? ` ${styles.total}` : ''}`}>
+        <th scope="row">{label}</th>
+        <td className={styles.amount}>{fmt(amount)} kr.</td>
+      </tr>
+      <tr className={styles.explanationRow}>
+        <td colSpan={2}>
+          <span className={styles.explanation}>{explanation}</span>
+        </td>
+      </tr>
+    </>
+  );
+}
+
 export default function Page() {
   // `values` holder altid det senest gyldige input, så resultaterne bliver
   // stående mens man taster et ugyldigt beløb.
@@ -96,6 +112,7 @@ export default function Page() {
 
   const errors = errorsFor(raw);
   const result = useMemo(() => calculate(values), [values]);
+  const explanations = useMemo(() => explain(values, result), [values, result]);
 
   function update(name: FieldName, text: string) {
     const next = { ...raw, [name]: text };
@@ -187,51 +204,42 @@ export default function Page() {
         <table className={styles.table}>
           <caption>Mellemregning</caption>
           <tbody>
-            <tr>
-              <th scope="row">
-                Købesum
-                <span className={styles.note}>
-                  {SHARE_FRACTION * 100}% × {fmt(PUBLIC_VALUATION)} ×{' '}
-                  {PRICE_FACTOR * 100}%
-                </span>
-              </th>
-              <td className={styles.amount}>{fmt(PURCHASE_PRICE)} kr.</td>
-            </tr>
-            <tr>
-              <th scope="row">
-                Fordel
-                <span className={styles.note}>markedsværdi − købesum</span>
-              </th>
-              <td className={styles.amount}>{fmt(result.benefit)} kr.</td>
-            </tr>
-            <tr>
-              <th scope="row">
-                Gældsbrev
-                <span className={styles.note}>købesum − egenfinansiering</span>
-              </th>
-              <td className={styles.amount}>{fmt(result.promissoryNote)} kr.</td>
-            </tr>
-            <tr>
-              <th scope="row">
-                Eftergivet gæld
-                <span className={styles.note}>
-                  maks. {GIFT_YEARS} × {fmt(ANNUAL_GIFT_ALLOWANCE)}
-                </span>
-              </th>
-              <td className={styles.amount}>{fmt(result.forgiven)} kr.</td>
-            </tr>
-            <tr>
-              <th scope="row">Restgæld på gældsbrev</th>
-              <td className={styles.amount}>{fmt(result.remainingDebt)} kr.</td>
-            </tr>
-            <tr>
-              <th scope="row">Boets aktiver</th>
-              <td className={styles.amount}>{fmt(result.estateAssets)} kr.</td>
-            </tr>
-            <tr className={styles.total}>
-              <th scope="row">Beregningsmasse</th>
-              <td className={styles.amount}>{fmt(result.estateMass)} kr.</td>
-            </tr>
+            <LedgerRow
+              label="Købesum"
+              amount={PURCHASE_PRICE}
+              explanation={explanations.purchasePrice}
+            />
+            <LedgerRow
+              label="Fordel"
+              amount={result.benefit}
+              explanation={explanations.benefit}
+            />
+            <LedgerRow
+              label="Gældsbrev"
+              amount={result.promissoryNote}
+              explanation={explanations.promissoryNote}
+            />
+            <LedgerRow
+              label="Eftergivet gæld"
+              amount={result.forgiven}
+              explanation={explanations.forgiven}
+            />
+            <LedgerRow
+              label="Restgæld på gældsbrev"
+              amount={result.remainingDebt}
+              explanation={explanations.remainingDebt}
+            />
+            <LedgerRow
+              label="Boets aktiver"
+              amount={result.estateAssets}
+              explanation={explanations.estateAssets}
+            />
+            <LedgerRow
+              label="Beregningsmasse"
+              amount={result.estateMass}
+              explanation={explanations.estateMass}
+              total
+            />
           </tbody>
         </table>
       </section>
@@ -246,6 +254,7 @@ export default function Page() {
             ? 'Forskuddet er dækket af arvelodden. Udligning er ikke nødvendig.'
             : `Forskuddet overstiger arvelodden med ${fmt(result.excess)} kr.`}
         </p>
+        <p className={styles.statusExplanation}>{explanations.status}</p>
       </section>
 
       <section className={styles.section}>

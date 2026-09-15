@@ -151,16 +151,34 @@
   white-space: nowrap;
 }
 
-.note {
-  display: block;
-  color: var(--muted);
-  font-size: 0.8125rem;
+.table tbody tr:last-child th,
+.table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .total th,
 .total td {
   font-weight: 500;
+}
+
+/* Mellemregning: beløbsrække med en forklaringslinje under. */
+
+.rowMain th,
+.rowMain td {
   border-bottom: none;
+  padding: 10px 0 2px;
+}
+
+.explanationRow td {
+  padding: 0 0 12px;
+}
+
+.explanation {
+  display: block;
+  max-width: 70ch;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 /* Status */
@@ -179,6 +197,14 @@
 
 .statusExcess {
   color: var(--amber);
+}
+
+.statusExplanation {
+  margin: 12px 0 0;
+  max-width: 70ch;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .footnote {

@@ -24,6 +24,9 @@ Everything runs client-side: no backend, no database, no API routes.
 - `lib/constants.ts` — the fixed assumptions (valuation, share, gift allowance, …)
 - `lib/calculate.ts` — `calculate(input)`, a pure function with no UI dependencies
 - `lib/calculate.test.ts` — unit tests for the calculation
+- `lib/explanations.ts` — `explain(input, result)`, the Danish explanatory texts
+- `lib/explanations.test.ts` — unit tests for the texts
+- `lib/format.ts` — the shared da-DK amount formatter
 - `app/page.tsx` — the calculator UI
 - `app/layout.tsx` — document shell, fonts and metadata
 
