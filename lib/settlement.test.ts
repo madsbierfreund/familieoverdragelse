@@ -6,7 +6,7 @@ import {
   type LoanType,
   MORTGAGE_LTV_MAX,
 } from './loanConstants';
-import { calculateSettlement } from './settlement';
+import { borrowingLimit, calculateSettlement } from './settlement';
 import { settlementInput } from './testFixtures';
 
 const DEFAULTS = {
@@ -16,6 +16,23 @@ const DEFAULTS = {
 };
 
 const TYPES = Object.keys(LOAN_TYPES) as LoanType[];
+
+describe('borrowingLimit', () => {
+  it('opfanger afrundingsstøj lige under et helt beløb', () => {
+    expect(borrowingLimit(5_743_019.9999999)).toBe(5_743_020);
+  });
+
+  it('runder aldrig op over den faktiske grænse', () => {
+    expect(borrowingLimit(509_111.6)).toBe(509_111);
+    expect(borrowingLimit(509_111.5)).toBe(509_111);
+    expect(borrowingLimit(509_111.9999)).toBe(509_111);
+  });
+
+  it('lader hele kroner stå', () => {
+    expect(borrowingLimit(6_000_000)).toBe(6_000_000);
+    expect(borrowingLimit(0)).toBe(0);
+  });
+});
 
 describe('calculateSettlement', () => {
   it('dækker hele udligningen med et nyt realkreditlån', () => {

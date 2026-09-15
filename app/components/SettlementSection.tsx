@@ -5,7 +5,11 @@ import { calculate, type CalculationInput } from '@/lib/calculate';
 import { fmt } from '@/lib/format';
 import { calculateLoan, type LoanInput } from '@/lib/loan';
 import { MAX_YEARS, MIN_YEARS } from '@/lib/loanConstants';
-import { calculateSettlement, type SettlementInput } from '@/lib/settlement';
+import {
+  borrowingLimit,
+  calculateSettlement,
+  type SettlementInput,
+} from '@/lib/settlement';
 import {
   DEFAULT_NOTE_RATE,
   DEFAULT_NOTE_YEARS,
@@ -105,11 +109,11 @@ export default function SettlementSection({
   }, [values, loanInput, note]);
 
   // Grænsen afhænger ikke af det valgte beløb, så den kan læses af en prøve.
-  // Den rundes til hele kroner og bruges både til feltet, skyderen og
+  // Den skæres til hele kroner og bruges både til feltet, skyderen og
   // valideringen, så de aldrig er uenige om, hvad der er tilladt.
   const cashLimit = useMemo(
     () =>
-      Math.round(
+      borrowingLimit(
         calculateSettlement({ ...base, newMortgageCash: 0 })
           .maxNewMortgageCash,
       ),

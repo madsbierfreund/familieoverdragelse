@@ -64,6 +64,15 @@ export interface SettlementResult {
 }
 
 /**
+ * Skærer en lånegrænse ned til hele kroner. Grænsen må aldrig rundes op, men
+ * beløb som 5.743.019,9999… skyldes afrundingsstøj og er i praksis hele
+ * kroner, så en lille tolerance lægges til, før der rundes ned.
+ */
+export function borrowingLimit(value: number): number {
+  return Math.floor(value + 1e-6);
+}
+
+/**
  * Beregner udligningen ved farens død, når datteren skal betale boet.
  * Ren funktion uden afhængigheder til UI.
  */
