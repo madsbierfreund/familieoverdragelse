@@ -1,7 +1,7 @@
 import type { CalculationResult } from './calculate';
 import { GIFT_YEARS, SIBLINGS } from './constants';
-import { annuity, balanceAfter, type LoanInput, type LoanResult } from './loan';
-import { MORTGAGE_LTV_MAX } from './loanConstants';
+import { annuity, schedule, type LoanInput, type LoanResult } from './loan';
+import { LOAN_TYPES, MORTGAGE_LTV_MAX } from './loanConstants';
 
 export interface SettlementInput {
   /** Resultatet af arveberegningen. */
@@ -84,17 +84,19 @@ export function calculateSettlement(
   const daughterOwes = inheritance.withAgreement.daughterPays;
   const daughterReceives = inheritance.withAgreement.daughterPaidOut;
 
-  const months = Math.min(deathYear * 12, loan.mortgageYears * 12);
-  const existingBalance = balanceAfter(
+  const interestOnlyMonths = LOAN_TYPES[loan.loanType].interestOnlyYears * 12;
+  const existingPlan = schedule(
     loanResult.mortgagePrincipal,
     loan.mortgageRate,
-    loanResult.mortgagePayment,
-    months,
+    loan.mortgageYears,
+    interestOnlyMonths,
   );
-  // Ydelsen er uændret, men bidraget beregnes af restgælden.
+  const months = deathYear * 12;
+  const existingBalance = existingPlan.balanceAfter(months);
+  // Ydelsen følger afdragsplanen, men bidraget beregnes af restgælden.
   const existingMonthly =
     existingBalance > 0
-      ? loanResult.mortgagePayment +
+      ? existingPlan.paymentInMonth(months + 1) +
         (existingBalance * loan.contributionRate) / 12
       : 0;
 
@@ -107,10 +109,16 @@ export function calculateSettlement(
     (maxNewPrincipal * loan.bondPrice) / 100,
   );
 
+  // Det nye lån har samme vilkår, så en afdragsfri periode starter forfra.
   const newPrincipal = newMortgageCash / (loan.bondPrice / 100);
+  const newPlan = schedule(
+    newPrincipal,
+    loan.mortgageRate,
+    loan.mortgageYears,
+    interestOnlyMonths,
+  );
   const newMonthly =
-    annuity(newPrincipal, loan.mortgageRate, loan.mortgageYears) +
-    (newPrincipal * loan.contributionRate) / 12;
+    newPlan.paymentInMonth(1) + (newPrincipal * loan.contributionRate) / 12;
 
   const noteAmount = daughterOwes - newMortgageCash;
   const noteMonthly = annuity(noteAmount, noteRate, noteYears);

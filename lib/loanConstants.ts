@@ -9,14 +9,46 @@ export const MORTGAGE_LTV_MAX = 0.8;
 /** Långiveres sædvanlige krav til kontant udbetaling, andel af købesummen. */
 export const MIN_DOWN_PAYMENT_SHARE = 0.05;
 
-/** Debitorrente på realkreditlånet pr. år. */
-export const DEFAULT_MORTGAGE_RATE = 0.0406;
+/** Afdragsfri periode i år på et lån med afdragsfrihed. */
+export const INTEREST_ONLY_YEARS = 10;
 
-/** Bidragssats pr. år. */
-export const DEFAULT_CONTRIBUTION_RATE = 0.0057;
+/** De lånetyper, beregningen kan regne på. */
+export type LoanType = 'fixed' | 'fixedInterestOnly' | 'flex';
 
-/** Kurs ved udbetaling af realkreditlånet. */
-export const DEFAULT_BOND_PRICE = 98;
+export const LOAN_TYPES: Record<
+  LoanType,
+  {
+    label: string;
+    rate: number;
+    contribution: number;
+    bondPrice: number;
+    interestOnlyYears: number;
+  }
+> = {
+  fixed: {
+    label: 'Fast rente med afdrag',
+    rate: 0.0406,
+    contribution: 0.0057,
+    bondPrice: 98,
+    interestOnlyYears: 0,
+  },
+  fixedInterestOnly: {
+    label: `Fast rente, ${INTEREST_ONLY_YEARS} års afdragsfrihed`,
+    rate: 0.0406,
+    contribution: 0.0087,
+    bondPrice: 98,
+    interestOnlyYears: INTEREST_ONLY_YEARS,
+  },
+  flex: {
+    label: 'Flexlån (F5) med afdrag',
+    rate: 0.035,
+    contribution: 0.0075,
+    bondPrice: 100,
+    interestOnlyYears: 0,
+  },
+};
+
+export const DEFAULT_LOAN_TYPE: LoanType = 'fixed';
 
 /** Løbetid på realkreditlånet i år. */
 export const DEFAULT_MORTGAGE_YEARS = 30;

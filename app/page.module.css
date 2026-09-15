@@ -98,6 +98,11 @@
   margin: 0;
 }
 
+.inputExplanation {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+}
+
 .slider {
   width: 100%;
   accent-color: var(--ink);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { calculate, type CalculationInput } from './calculate';
 import { PURCHASE_PRICE } from './constants';
-import { explain, INTRO } from './explanations';
+import { explain, INPUT_EXPLANATIONS, INTRO } from './explanations';
 
 function texts(input: CalculationInput) {
   return explain(input, calculate(input));
@@ -148,6 +148,12 @@ describe('explain', () => {
     });
 
     expect(t.status).toContain('Beløbene går lige op.');
+  });
+
+  it('forklarer de tre øverste input', () => {
+    expect(INPUT_EXPLANATIONS.marketValue).toContain('i fri handel i dag');
+    expect(INPUT_EXPLANATIONS.otherAssets).toContain('Farens nettoformue');
+    expect(INPUT_EXPLANATIONS.ownFinancing).toContain('6.700.400 kr.');
   });
 
   it('nævner ikke det gamle antal søskende', () => {

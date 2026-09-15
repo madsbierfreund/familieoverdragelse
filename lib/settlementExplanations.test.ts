@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SIBLINGS } from './constants';
 import { calculateSettlement } from './settlement';
 import { explainSettlement } from './settlementExplanations';
-import { settlementInput } from './settlementFixtures';
+import { settlementInput } from './testFixtures';
 
 const DEFAULTS = {
   marketValue: 12_000_000,
@@ -68,6 +68,22 @@ describe('explainSettlement', () => {
 
     expect(t.note).toContain('uden reel sikkerhed');
     expect(t.note).toContain('Friværdien bag realkreditlånene er kun');
+  });
+
+  it('nævner afdragsfriheden kun ved den afdragsfri lånetype', () => {
+    const interestOnly = texts(DEFAULTS, { loanType: 'fixedInterestOnly' });
+    expect(interestOnly.existingMortgage).toContain(
+      'Lånet er stadig afdragsfrit, så restgælden er den samme som ved købet.',
+    );
+    expect(interestOnly.newMortgage).toContain(
+      'Det nye lån får sin egen afdragsfri periode på 10 år fra dødsfaldet.',
+    );
+
+    for (const loanType of ['fixed', 'flex'] as const) {
+      const t = texts(DEFAULTS, { loanType });
+      expect(t.existingMortgage).not.toContain('afdragsfrit');
+      expect(t.newMortgage).not.toContain('afdragsfri periode');
+    }
   });
 
   it('henter antallet af søskende fra konstanterne', () => {

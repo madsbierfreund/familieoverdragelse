@@ -1,5 +1,7 @@
 import { PURCHASE_PRICE } from './constants';
 import {
+  LOAN_TYPES,
+  type LoanType,
   MIN_DOWN_PAYMENT_SHARE,
   MORTGAGE_LTV_MAX,
   TAX_DEDUCTION_RATE_HIGH,
@@ -16,6 +18,8 @@ export interface LoanInput {
   /** Datterens egenfinansiering, delt med arveberegneren. */
   ownFinancing: number;
   lendingBasis: LendingBasis;
+  /** Lånetypen, som bestemmer en eventuel afdragsfri periode. */
+  loanType: LoanType;
   /** Kontant udbetaling. */
   downPayment: number;
   /** Debitorrente på realkreditlånet pr. år. */
@@ -85,45 +89,61 @@ export function annuity(
   return (principal * rate) / (1 - Math.pow(1 + rate, -months));
 }
 
-/**
- * Restgælden efter et antal ydelser, måned for måned på den faldende restgæld.
- * Er lånet betalt ud, er restgælden 0.
- */
-export function balanceAfter(
-  principal: number,
-  annualRate: number,
-  payment: number,
-  months: number,
-): number {
-  const rate = annualRate / 12;
-
-  let balance = principal;
-  for (let month = 0; month < months; month++) {
-    balance -= payment - balance * rate;
-  }
-  return Math.max(0, balance);
+/** En afdragsplan, der kan svare på ydelse, restgæld og renter. */
+export interface Schedule {
+  /** Ydelsen i en given måned, 1-indekseret. 0 efter sidste termin. */
+  paymentInMonth(month: number): number;
+  /** Restgælden efter et antal måneder. 0 når lånet er betalt ud. */
+  balanceAfter(months: number): number;
+  /** Renterne i de første måneder. */
+  interestInFirst(months: number): number;
 }
 
 /**
- * Renterne i de første tolv ydelser, måned for måned på den faldende restgæld.
+ * Afdragsplanen for et annuitetslån med en eventuel afdragsfri periode.
+ * I den afdragsfri periode betales kun renten, så restgælden står stille.
+ * Ren funktion uden afhængigheder til UI.
  */
-function firstYearInterestOf(
+export function schedule(
   principal: number,
   annualRate: number,
   years: number,
-  payment: number,
-): number {
+  interestOnlyMonths = 0,
+): Schedule {
   const rate = annualRate / 12;
-  const months = Math.min(12, years * 12);
+  const months = Math.round(years * 12);
+  const interestOnly = Math.min(interestOnlyMonths, months);
+  const paymentAfterInterestOnly =
+    months - interestOnly === 0
+      ? 0
+      : annuity(principal, annualRate, (months - interestOnly) / 12);
 
-  let balance = principal;
-  let interest = 0;
-  for (let month = 0; month < months; month++) {
-    const monthInterest = balance * rate;
-    interest += monthInterest;
-    balance -= payment - monthInterest;
-  }
-  return interest;
+  const walk = (count: number) => {
+    let balance = principal;
+    let interest = 0;
+    for (let month = 1; month <= count; month++) {
+      const monthInterest = balance * rate;
+      const payment =
+        month <= interestOnly ? monthInterest : paymentAfterInterestOnly;
+      interest += monthInterest;
+      balance -= payment - monthInterest;
+    }
+    return { balance, interest };
+  };
+
+  return {
+    paymentInMonth(month) {
+      if (month > months) return 0;
+      if (month > interestOnly) return paymentAfterInterestOnly;
+      return walk(month - 1).balance * rate;
+    },
+    balanceAfter(count) {
+      return Math.max(0, walk(Math.min(count, months)).balance);
+    },
+    interestInFirst(count) {
+      return walk(Math.min(count, months)).interest;
+    },
+  };
 }
 
 /**
@@ -141,6 +161,7 @@ export function calculateLoan(input: LoanInput): LoanResult {
     contributionRate,
     bondPrice,
     mortgageYears,
+    loanType,
   } = input;
 
   const basis =
@@ -159,22 +180,20 @@ export function calculateLoan(input: LoanInput): LoanResult {
   );
   const minDownPaymentForLtv = Math.max(0, ownFinancing - maxMortgageCash);
 
-  const mortgagePayment = annuity(
+  const interestOnlyMonths = LOAN_TYPES[loanType].interestOnlyYears * 12;
+  const plan = schedule(
     mortgagePrincipal,
     mortgageRate,
     mortgageYears,
+    interestOnlyMonths,
   );
+  const mortgagePayment = plan.paymentInMonth(1);
   // Bidraget beregnes af hovedstolen og gælder derfor kun det første år.
   const mortgageContribution = (mortgagePrincipal * contributionRate) / 12;
   const mortgageMonthly = mortgagePayment + mortgageContribution;
 
   // Renter og bidrag er fradragsberettigede, afdraget er ikke.
-  const firstYearInterest = firstYearInterestOf(
-    mortgagePrincipal,
-    mortgageRate,
-    mortgageYears,
-    mortgagePayment,
-  );
+  const firstYearInterest = plan.interestInFirst(12);
   const firstYearContribution = mortgageContribution * 12;
   const deductible = firstYearInterest + firstYearContribution;
   const taxSavingYear =

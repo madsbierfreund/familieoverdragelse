@@ -105,10 +105,11 @@ export default function SettlementSection({
   }, [values, loanInput, note]);
 
   // Grænsen afhænger ikke af det valgte beløb, så den kan læses af en prøve.
-  // Den skæres til hele kroner, så feltet aldrig viser et beløb over grænsen.
+  // Den rundes til hele kroner og bruges både til feltet, skyderen og
+  // valideringen, så de aldrig er uenige om, hvad der er tilladt.
   const cashLimit = useMemo(
     () =>
-      Math.floor(
+      Math.round(
         calculateSettlement({ ...base, newMortgageCash: 0 })
           .maxNewMortgageCash,
       ),

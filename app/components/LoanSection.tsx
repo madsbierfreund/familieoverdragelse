@@ -5,10 +5,10 @@ import { PURCHASE_PRICE } from '@/lib/constants';
 import { decimal, fmt } from '@/lib/format';
 import { calculateLoan, type LendingBasis, type LoanInput } from '@/lib/loan';
 import {
-  DEFAULT_BOND_PRICE,
-  DEFAULT_CONTRIBUTION_RATE,
-  DEFAULT_MORTGAGE_RATE,
+  DEFAULT_LOAN_TYPE,
   DEFAULT_MORTGAGE_YEARS,
+  LOAN_TYPES,
+  type LoanType,
   MAX_BOND_PRICE,
   MAX_YEARS,
   MIN_BOND_PRICE,
@@ -19,23 +19,36 @@ import { explainLoan } from '@/lib/loanExplanations';
 import styles from '../page.module.css';
 import LedgerRow from './LedgerRow';
 
-type LoanSettings = Omit<LoanInput, 'marketValue' | 'ownFinancing'>;
+type LoanSettings = Omit<
+  LoanInput,
+  'marketValue' | 'ownFinancing' | 'loanType'
+>;
 type LoanFieldName = keyof Omit<LoanSettings, 'lendingBasis'>;
 
 export const LOAN_DEFAULTS: LoanSettings = {
   lendingBasis: 'market',
   downPayment: MIN_DOWN_PAYMENT_SHARE * PURCHASE_PRICE,
-  mortgageRate: DEFAULT_MORTGAGE_RATE,
-  contributionRate: DEFAULT_CONTRIBUTION_RATE,
-  bondPrice: DEFAULT_BOND_PRICE,
+  mortgageRate: LOAN_TYPES[DEFAULT_LOAN_TYPE].rate,
+  contributionRate: LOAN_TYPES[DEFAULT_LOAN_TYPE].contribution,
+  bondPrice: LOAN_TYPES[DEFAULT_LOAN_TYPE].bondPrice,
   mortgageYears: DEFAULT_MORTGAGE_YEARS,
 };
 
+/** De rå felter, en lånetype sætter, når den vælges. */
+function ratesOf(loanType: LoanType) {
+  const type = LOAN_TYPES[loanType];
+  return {
+    mortgageRate: decimal(type.rate * 100, 2, 2),
+    contributionRate: decimal(type.contribution * 100, 2, 2),
+    bondPrice: decimal(type.bondPrice),
+  };
+}
+
 const LOAN_RAW_DEFAULTS: Record<LoanFieldName, string> = {
   downPayment: String(LOAN_DEFAULTS.downPayment),
-  mortgageRate: decimal(DEFAULT_MORTGAGE_RATE * 100, 2, 2),
-  contributionRate: decimal(DEFAULT_CONTRIBUTION_RATE * 100, 2, 2),
-  bondPrice: decimal(DEFAULT_BOND_PRICE),
+  mortgageRate: decimal(LOAN_DEFAULTS.mortgageRate * 100, 2, 2),
+  contributionRate: decimal(LOAN_DEFAULTS.contributionRate * 100, 2, 2),
+  bondPrice: decimal(LOAN_DEFAULTS.bondPrice),
   mortgageYears: String(DEFAULT_MORTGAGE_YEARS),
 };
 
@@ -65,6 +78,7 @@ function readLoanField(name: LoanFieldName, raw: string): number | null {
 function buildInput(
   raw: Record<LoanFieldName, string>,
   lendingBasis: LendingBasis,
+  loanType: LoanType,
   marketValue: number,
   ownFinancing: number,
 ): LoanInput | null {
@@ -74,7 +88,7 @@ function buildInput(
     if (value === null) return null;
     values[name] = value;
   }
-  return { ...values, lendingBasis, marketValue, ownFinancing };
+  return { ...values, lendingBasis, loanType, marketValue, ownFinancing };
 }
 
 function sameInput(a: LoanInput, b: LoanInput): boolean {
@@ -86,6 +100,7 @@ function sameInput(a: LoanInput, b: LoanInput): boolean {
 function loanErrorsFor(
   raw: Record<LoanFieldName, string>,
   lendingBasis: LendingBasis,
+  loanType: LoanType,
   marketValue: number,
   ownFinancing: number,
 ): string[] {
@@ -126,7 +141,7 @@ function loanErrorsFor(
 
   // Realkreditgrænsen afhænger også af belåningsgrundlaget og af de beløb,
   // arveberegneren leverer, så den prøves på hele sættet.
-  const input = buildInput(raw, lendingBasis, marketValue, ownFinancing);
+  const input = buildInput(raw, lendingBasis, loanType, marketValue, ownFinancing);
   if (input !== null && messages.length === 0) {
     const { maxMortgageCash, toFinance, minDownPaymentForLtv } =
       calculateLoan(input);
@@ -144,10 +159,12 @@ function loanErrorsFor(
 export default function LoanSection({
   marketValue,
   ownFinancing,
+  loanType,
   onInput,
 }: {
   marketValue: number;
   ownFinancing: number;
+  loanType: LoanType;
   /** Melder det senest gyldige sæt værdier op, så udligningen kan bruge det. */
   onInput: (input: LoanInput) => void;
 }) {
@@ -156,6 +173,7 @@ export default function LoanSection({
   // felterne viser lige nu.
   const [input, setInput] = useState<LoanInput>({
     ...LOAN_DEFAULTS,
+    loanType,
     marketValue,
     ownFinancing,
   });
@@ -165,12 +183,32 @@ export default function LoanSection({
     LOAN_DEFAULTS.lendingBasis,
   );
 
-  const errors = loanErrorsFor(raw, lendingBasis, marketValue, ownFinancing);
+  // En ny lånetype sætter rente, bidrag og kurs til typens satser. Udbetaling
+  // og løbetid er brugerens egne valg og bliver stående.
+  const [shownType, setShownType] = useState(loanType);
+  if (shownType !== loanType) {
+    setShownType(loanType);
+    setRaw({ ...raw, ...ratesOf(loanType) });
+  }
+
+  const errors = loanErrorsFor(
+    raw,
+    lendingBasis,
+    loanType,
+    marketValue,
+    ownFinancing,
+  );
 
   // Markedsværdi og egenfinansiering kommer fra arveberegneren, så et gyldigt
   // sæt værdier kan blive ugyldigt uden et tastetryk her. Resultaterne følger
   // først med, når alle felterne passer sammen igen.
-  const candidate = buildInput(raw, lendingBasis, marketValue, ownFinancing);
+  const candidate = buildInput(
+    raw,
+    lendingBasis,
+    loanType,
+    marketValue,
+    ownFinancing,
+  );
   if (errors.length === 0 && candidate !== null && !sameInput(candidate, input)) {
     setInput(candidate);
   }

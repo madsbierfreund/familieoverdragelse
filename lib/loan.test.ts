@@ -1,26 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { PURCHASE_PRICE } from './constants';
-import { annuity, calculateLoan, type LoanInput } from './loan';
+import { annuity, calculateLoan, schedule, type LoanInput } from './loan';
 import {
-  DEFAULT_BOND_PRICE,
-  DEFAULT_CONTRIBUTION_RATE,
-  DEFAULT_MORTGAGE_RATE,
-  DEFAULT_MORTGAGE_YEARS,
-  MIN_DOWN_PAYMENT_SHARE,
+  LOAN_TYPES,
+  type LoanType,
   MORTGAGE_LTV_MAX,
   TAX_DEDUCTION_RATE_LOW,
 } from './loanConstants';
+import { loanInput } from './testFixtures';
 
-const BASE: LoanInput = {
-  marketValue: 12_000_000,
-  ownFinancing: 4_000_000,
-  lendingBasis: 'market',
-  downPayment: MIN_DOWN_PAYMENT_SHARE * PURCHASE_PRICE,
-  mortgageRate: DEFAULT_MORTGAGE_RATE,
-  contributionRate: DEFAULT_CONTRIBUTION_RATE,
-  bondPrice: DEFAULT_BOND_PRICE,
-  mortgageYears: DEFAULT_MORTGAGE_YEARS,
-};
+const BASE = loanInput('fixed');
+const TYPES = Object.keys(LOAN_TYPES) as LoanType[];
 
 describe('annuity', () => {
   it('beregner den månedlige ydelse på et annuitetslån', () => {
@@ -36,6 +26,49 @@ describe('annuity', () => {
   });
 });
 
+describe('schedule', () => {
+  it('lader gælden stå stille i den afdragsfri periode', () => {
+    const principal = 3_739_775.51;
+    const plan = schedule(principal, 0.0406, 30, 120);
+
+    expect(plan.balanceAfter(120)).toBeCloseTo(principal, 6);
+    expect(plan.paymentInMonth(1)).toBeCloseTo((principal * 0.0406) / 12, 6);
+    expect(plan.paymentInMonth(121)).toBeCloseTo(
+      annuity(principal, 0.0406, (360 - 120) / 12),
+      6,
+    );
+  });
+
+  it('svarer til et almindeligt annuitetslån uden afdragsfrihed', () => {
+    let seed = 4_060_000;
+    const random = () => {
+      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+      return seed / 2_147_483_648;
+    };
+
+    for (let i = 0; i < 200; i++) {
+      const principal = Math.round(random() * 8_000_000);
+      const rate = random() * 0.1;
+      const years = 1 + Math.floor(random() * 30);
+      const plan = schedule(principal, rate, years, 0);
+      const payment = annuity(principal, rate, years);
+      const monthRate = rate / 12;
+      const months = Math.min(12 + Math.floor(random() * 100), years * 12);
+
+      expect(plan.paymentInMonth(1)).toBe(payment);
+      expect(plan.paymentInMonth(months)).toBe(payment);
+
+      // Restgælden efter annuitetsformlen, uafhængigt af planens løkke.
+      const growth = Math.pow(1 + monthRate, months);
+      const expected =
+        principal * growth - (payment * (growth - 1)) / (monthRate || 1);
+      if (monthRate > 0) {
+        expect(plan.balanceAfter(months)).toBeCloseTo(Math.max(0, expected), 4);
+      }
+    }
+  });
+});
+
 describe('calculateLoan', () => {
   it('belåner markedsværdien', () => {
     const r = calculateLoan(BASE);
@@ -43,6 +76,7 @@ describe('calculateLoan', () => {
     expect(r.maxMortgageCash).toBe(9_600_000);
     expect(r.mortgageCash).toBe(3_664_980);
     expect(r.mortgagePrincipal).toBeCloseTo(3_739_775.51, 2);
+    expect(r.mortgagePayment).toBeCloseTo(17_983.86, 2);
     expect(r.downPaymentShortfall).toBe(0);
     expect(r.minDownPaymentForLtv).toBe(0);
     expect(r.totalDebt).toBe(r.mortgagePrincipal);
@@ -84,34 +118,46 @@ describe('calculateLoan', () => {
     expect(r.downPaymentShortfall).toBe(335_020);
   });
 
-  it('beregner ydelse og bidrag på realkreditlånet', () => {
+  it('beregner ydelse og bidrag ved fast rente med afdrag', () => {
     const r = calculateLoan(BASE);
 
     expect(r.mortgagePayment).toBeGreaterThan(17_900);
     expect(r.mortgagePayment).toBeLessThan(18_100);
     expect(r.mortgageContribution).toBeCloseTo(1_776.39, 2);
-    expect(r.mortgageMonthly).toBeCloseTo(
-      r.mortgagePayment + r.mortgageContribution,
-      6,
-    );
-    expect(r.totalMonthly).toBe(r.mortgageMonthly);
+    expect(r.totalMonthly).toBeCloseTo(19_760.26, 2);
   });
 
-  it('anslår fradraget og ydelsen efter skat', () => {
+  it('anslår fradraget og ydelsen efter skat ved fast rente med afdrag', () => {
     const r = calculateLoan(BASE);
 
     expect(r.firstYearInterest).toBeGreaterThan(150_000);
     expect(r.firstYearInterest).toBeLessThan(151_300);
     expect(r.firstYearContribution).toBeCloseTo(21_316.72, 2);
-    expect(r.deductible).toBeCloseTo(
-      r.firstYearInterest + r.firstYearContribution,
-      6,
-    );
     expect(r.taxSavingYear).toBeGreaterThan(46_800);
     expect(r.taxSavingYear).toBeLessThan(47_200);
-    expect(r.taxSavingMonthly).toBeCloseTo(r.taxSavingYear / 12, 6);
-    expect(r.monthlyAfterTax).toBeGreaterThan(15_800);
-    expect(r.monthlyAfterTax).toBeLessThan(15_900);
+    expect(r.monthlyAfterTax).toBeCloseTo(15_844.68, 2);
+  });
+
+  it('betaler kun rente og bidrag i den afdragsfri periode', () => {
+    const r = calculateLoan(loanInput('fixedInterestOnly'));
+
+    expect(r.mortgagePrincipal).toBeCloseTo(3_739_775.51, 2);
+    expect(r.mortgagePayment).toBeCloseTo(12_652.91, 2);
+    expect(r.totalMonthly).toBeCloseTo(15_364.24, 2);
+    expect(r.deductible).toBeCloseTo(184_370.93, 2);
+    expect(r.taxSavingYear).toBeCloseTo(50_092.73, 2);
+    expect(r.monthlyAfterTax).toBeCloseTo(11_189.85, 2);
+  });
+
+  it('regner flexlån til kurs 100', () => {
+    const r = calculateLoan(loanInput('flex'));
+
+    expect(r.mortgagePrincipal).toBe(3_664_980);
+    expect(r.mortgagePayment).toBeCloseTo(16_457.4, 2);
+    expect(r.totalMonthly).toBeCloseTo(18_748.01, 2);
+    expect(r.deductible).toBeCloseTo(154_640.47, 2);
+    expect(r.taxSavingYear).toBeCloseTo(42_660.12, 2);
+    expect(r.monthlyAfterTax).toBeCloseTo(15_193.0, 2);
   });
 
   it('bruger den lave sats, når fradraget er under grænsen', () => {
@@ -123,70 +169,78 @@ describe('calculateLoan', () => {
     });
 
     expect(r.deductible).toBeLessThan(50_000);
-    expect(r.taxSavingYear).toBeCloseTo(r.deductible * TAX_DEDUCTION_RATE_LOW, 6);
+    expect(r.taxSavingYear).toBeCloseTo(
+      r.deductible * TAX_DEDUCTION_RATE_LOW,
+      6,
+    );
   });
 
-  it('giver intet fradrag uden lån', () => {
-    const r = calculateLoan({ ...BASE, downPayment: BASE.ownFinancing });
+  it.each(TYPES)('giver intet fradrag uden lån (%s)', (loanType) => {
+    const input = loanInput(loanType);
+    const r = calculateLoan({ ...input, downPayment: input.ownFinancing });
 
     expect(r.mortgagePrincipal).toBe(0);
+    expect(r.mortgagePayment).toBe(0);
     expect(r.firstYearInterest).toBe(0);
-    expect(r.firstYearContribution).toBe(0);
     expect(r.deductible).toBe(0);
     expect(r.taxSavingYear).toBe(0);
-    expect(r.taxSavingMonthly).toBe(0);
     expect(r.monthlyAfterTax).toBe(0);
   });
 
-  it('fordeler hele egenfinansieringen for tilfældige gyldige input', () => {
-    let seed = 6_700_400;
-    const random = () => {
-      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
-      return seed / 2_147_483_648;
-    };
-
-    for (let i = 0; i < 200; i++) {
-      const marketValue = Math.round(random() * 20_000_000);
-      const ownFinancing = Math.round(random() * PURCHASE_PRICE);
-      const lendingBasis = random() < 0.5 ? 'market' : 'purchase';
-
-      // Udbetalingen skal være stor nok til, at realkredit kan dække resten.
-      const basis =
-        lendingBasis === 'market'
-          ? Math.max(marketValue, PURCHASE_PRICE)
-          : PURCHASE_PRICE;
-      const minDown = Math.ceil(
-        Math.max(0, ownFinancing - MORTGAGE_LTV_MAX * basis),
-      );
-      const downPayment =
-        minDown + Math.round(random() * (ownFinancing - minDown));
-
-      const input: LoanInput = {
-        ...BASE,
-        marketValue,
-        ownFinancing,
-        lendingBasis,
-        downPayment,
+  it.each(TYPES)(
+    'fordeler hele egenfinansieringen for tilfældige gyldige input (%s)',
+    (loanType) => {
+      let seed = 6_700_400;
+      const random = () => {
+        seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+        return seed / 2_147_483_648;
       };
-      const r = calculateLoan(input);
 
-      expect(input.downPayment + r.mortgageCash).toBe(input.ownFinancing);
-      expect(r.mortgageCash).toBeLessThanOrEqual(r.maxMortgageCash);
+      for (let i = 0; i < 200; i++) {
+        const marketValue = Math.round(random() * 20_000_000);
+        const ownFinancing = Math.round(random() * PURCHASE_PRICE);
+        const lendingBasis = random() < 0.5 ? 'market' : 'purchase';
 
-      // Ydelserne i det første år er renter plus afdrag. Restgælden efter
-      // tolv ydelser tages fra annuitetsformlen, uafhængigt af summen ovenfor.
-      const rate = input.mortgageRate / 12;
-      const growth = Math.pow(1 + rate, 12);
-      const balance =
-        r.mortgagePrincipal * growth -
-        (r.mortgagePayment * (growth - 1)) / rate;
-      const repaid = r.mortgagePrincipal - balance;
-      expect(
-        Math.abs(r.firstYearInterest + repaid - 12 * r.mortgagePayment),
-      ).toBeLessThan(1);
-      if (r.mortgagePrincipal > 0) {
-        expect(r.monthlyAfterTax).toBeLessThan(r.totalMonthly);
+        // Udbetalingen skal være stor nok til, at realkredit kan dække resten.
+        const basis =
+          lendingBasis === 'market'
+            ? Math.max(marketValue, PURCHASE_PRICE)
+            : PURCHASE_PRICE;
+        const minDown = Math.ceil(
+          Math.max(0, ownFinancing - MORTGAGE_LTV_MAX * basis),
+        );
+        const downPayment =
+          minDown + Math.round(random() * (ownFinancing - minDown));
+
+        const input: LoanInput = loanInput(loanType, {
+          marketValue,
+          ownFinancing,
+          lendingBasis,
+          downPayment,
+        });
+        const r = calculateLoan(input);
+
+        expect(input.downPayment + r.mortgageCash).toBe(input.ownFinancing);
+        expect(r.mortgageCash).toBeLessThanOrEqual(r.maxMortgageCash);
+
+        // Ydelserne i det første år er renter plus afdrag.
+        const months = 12;
+        const repaid =
+          r.mortgagePrincipal -
+          schedule(
+            r.mortgagePrincipal,
+            input.mortgageRate,
+            input.mortgageYears,
+            LOAN_TYPES[loanType].interestOnlyYears * 12,
+          ).balanceAfter(months);
+        expect(
+          Math.abs(r.firstYearInterest + repaid - months * r.mortgagePayment),
+        ).toBeLessThan(1);
+
+        if (r.mortgagePrincipal > 0) {
+          expect(r.monthlyAfterTax).toBeLessThan(r.totalMonthly);
+        }
       }
-    }
-  });
+    },
+  );
 });

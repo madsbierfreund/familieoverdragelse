@@ -1,29 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import { PURCHASE_PRICE } from './constants';
 import { calculateLoan, type LoanInput } from './loan';
-import {
-  DEFAULT_BOND_PRICE,
-  DEFAULT_CONTRIBUTION_RATE,
-  DEFAULT_MORTGAGE_RATE,
-  DEFAULT_MORTGAGE_YEARS,
-  MIN_DOWN_PAYMENT_SHARE,
-} from './loanConstants';
-import { explainLoan } from './loanExplanations';
+import { LOAN_TYPES, type LoanType } from './loanConstants';
+import { explainLoan, LOAN_TYPE_EXPLANATIONS } from './loanExplanations';
+import { loanInput } from './testFixtures';
 
-const BASE: LoanInput = {
-  marketValue: 12_000_000,
-  ownFinancing: 4_000_000,
-  lendingBasis: 'market',
-  downPayment: MIN_DOWN_PAYMENT_SHARE * PURCHASE_PRICE,
-  mortgageRate: DEFAULT_MORTGAGE_RATE,
-  contributionRate: DEFAULT_CONTRIBUTION_RATE,
-  bondPrice: DEFAULT_BOND_PRICE,
-  mortgageYears: DEFAULT_MORTGAGE_YEARS,
-};
+const BASE = loanInput('fixed');
 
 function texts(input: LoanInput) {
   return explainLoan(input, calculateLoan(input));
 }
+
+describe('LOAN_TYPE_EXPLANATIONS', () => {
+  it('har en tekst til hver lånetype', () => {
+    for (const type of Object.keys(LOAN_TYPES) as LoanType[]) {
+      expect(LOAN_TYPE_EXPLANATIONS[type].length).toBeGreaterThan(40);
+    }
+  });
+
+  it('henter den afdragsfri periode og belåningsgrænsen fra konstanterne', () => {
+    expect(LOAN_TYPE_EXPLANATIONS.fixedInterestOnly).toContain(
+      'De første 10 år',
+    );
+    expect(LOAN_TYPE_EXPLANATIONS.fixedInterestOnly).toContain(
+      'lavere belåning end 80%',
+    );
+    expect(LOAN_TYPE_EXPLANATIONS.flex).toContain('for 5 år ad gangen');
+  });
+});
 
 describe('explainLoan', () => {
   it('forklarer egenfinansieringen med gældsbrevet til faren', () => {
@@ -38,6 +42,12 @@ describe('explainLoan', () => {
 
     expect(t.lendingBasis).toContain('højst 9.600.000 kr.');
     expect(t.lendingBasis).toContain('højst 5.360.320 kr.');
+  });
+
+  it('nævner de rigtige satser i fodnoten', () => {
+    expect(texts(BASE).footnote).toContain(
+      'Bidragssats for afdragsfrihed, satserne for flexlån og kursen er antagelser.',
+    );
   });
 
   it('forklarer det anslåede skattefradrag', () => {

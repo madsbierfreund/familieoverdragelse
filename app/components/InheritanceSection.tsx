@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { calculate, type CalculationInput } from '@/lib/calculate';
 import { PUBLIC_VALUATION, PURCHASE_PRICE } from '@/lib/constants';
-import { explain, INTRO } from '@/lib/explanations';
+import { explain, INPUT_EXPLANATIONS } from '@/lib/explanations';
 import { fmt } from '@/lib/format';
 import styles from '../page.module.css';
 import LedgerRow from './LedgerRow';
@@ -107,9 +107,6 @@ export default function InheritanceSection({
 
   return (
     <>
-      <h1 className={styles.heading}>Familieoverdragelse af anpart A</h1>
-      <p className={styles.intro}>{INTRO}</p>
-
       <div className={styles.inputs}>
         {FIELDS.map((field) => {
           const sliderValue = Math.min(
@@ -143,6 +140,9 @@ export default function InheritanceSection({
                 aria-invalid={fieldInvalid(field.name)}
                 onChange={(event) => update(field.name, event.target.value)}
               />
+              <p className={`${styles.explanation} ${styles.inputExplanation}`}>
+                {INPUT_EXPLANATIONS[field.name]}
+              </p>
             </div>
           );
         })}

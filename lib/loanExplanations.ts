@@ -2,6 +2,8 @@ import { PURCHASE_PRICE } from './constants';
 import { decimal, fmt, pct, ratePct } from './format';
 import type { LoanInput, LoanResult } from './loan';
 import {
+  INTEREST_ONLY_YEARS,
+  type LoanType,
   MIN_DOWN_PAYMENT_SHARE,
   MORTGAGE_LTV_MAX,
   TAX_DEDUCTION_RATE_HIGH,
@@ -22,6 +24,22 @@ export interface LoanExplanations {
   afterTax: string;
   footnote: string;
 }
+
+/** Forklaringen til hver lånetype. */
+export const LOAN_TYPE_EXPLANATIONS: Record<LoanType, string> = {
+  fixed: 'Renten ligger fast i hele løbetiden, og lånet afdrages fra start.',
+  fixedInterestOnly: [
+    `Renten ligger fast. De første ${INTEREST_ONLY_YEARS} år betales kun rente`,
+    'og bidrag, så ydelsen er lavere, men gælden falder ikke. Derefter',
+    'afdrages lånet over de resterende år, og ydelsen stiger. Afdragsfrihed',
+    `har et højere bidrag, og nogle långivere kræver lavere belåning end`,
+    `${pct(MORTGAGE_LTV_MAX)}.`,
+  ].join(' '),
+  flex: [
+    'Renten fastsættes for 5 år ad gangen og kan stige eller falde ved hver',
+    'refinansiering. Beregningen antager uændret rente i hele løbetiden.',
+  ].join(' '),
+};
 
 /**
  * Bygger de forklarende tekster til låneberegningen.
@@ -118,8 +136,10 @@ export function explainLoan(
   ].join(' ');
 
   const footnote = [
-    'Standardværdier: debitorrente og bidragssats fra Realkredit Danmark,',
-    'januar 2026. Kursen er en antagelse. Tjek aktuelle tilbud fra långiver.',
+    'Standardværdier: debitorrente og bidragssats for fast rente med afdrag',
+    'fra Realkredit Danmark, januar 2026. Bidragssats for afdragsfrihed,',
+    'satserne for flexlån og kursen er antagelser. Tjek aktuelle tilbud fra',
+    'långiver.',
   ].join(' ');
 
   return {

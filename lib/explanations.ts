@@ -42,6 +42,25 @@ export function numberWord(value: number): string {
   return NUMBER_WORDS[value] ?? String(value);
 }
 
+/** Forklaringerne under de tre øverste input. */
+export const INPUT_EXPLANATIONS = {
+  marketValue: [
+    'Det beløb, anparten realistisk kan sælges for i fri handel i dag.',
+    'Bruges til at beregne datterens fordel og hvor meget anparten kan',
+    'belånes. Salgsforbuddet i samejeoverenskomsten kan trække værdien ned.',
+  ].join(' '),
+  otherAssets: [
+    'Farens nettoformue ved dødsfaldet ud over anparten og gældsbrevet, fx',
+    'bolig, opsparing og værdipapirer minus gæld. Datterens betaling for',
+    'anparten indgår her, hvis faren stadig har pengene.',
+  ].join(' '),
+  ownFinancing: [
+    `Den del af købesummen på ${fmt(PURCHASE_PRICE)} kr., som datteren betaler`,
+    'ved handlen med realkreditlån og egne midler. Resten lånes af faren via',
+    'gældsbrevet.',
+  ].join(' '),
+};
+
 /** Indledningen på siden. */
 export const INTRO = `Fordeling mellem datteren og ${numberWord(
   SIBLINGS,
