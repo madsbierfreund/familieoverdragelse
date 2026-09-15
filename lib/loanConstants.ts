@@ -21,16 +21,10 @@ export const DEFAULT_BOND_PRICE = 98;
 /** Løbetid på realkreditlånet i år. */
 export const DEFAULT_MORTGAGE_YEARS = 30;
 
-/** Rente på banklånet pr. år. */
-export const DEFAULT_BANK_RATE = 0.06;
-
-/** Løbetid på banklånet i år. */
-export const DEFAULT_BANK_YEARS = 20;
-
 /** Tilladt kursinterval. */
 export const MIN_BOND_PRICE = 50;
 export const MAX_BOND_PRICE = 105;
 
-/** Tilladt løbetid i år for begge lån. */
+/** Tilladt løbetid i år. */
 export const MIN_YEARS = 1;
 export const MAX_YEARS = 30;

@@ -2,13 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { PURCHASE_PRICE } from './constants';
 import { annuity, calculateLoan, type LoanInput } from './loan';
 import {
-  DEFAULT_BANK_RATE,
-  DEFAULT_BANK_YEARS,
   DEFAULT_BOND_PRICE,
   DEFAULT_CONTRIBUTION_RATE,
   DEFAULT_MORTGAGE_RATE,
   DEFAULT_MORTGAGE_YEARS,
   MIN_DOWN_PAYMENT_SHARE,
+  MORTGAGE_LTV_MAX,
 } from './loanConstants';
 
 const BASE: LoanInput = {
@@ -20,8 +19,6 @@ const BASE: LoanInput = {
   contributionRate: DEFAULT_CONTRIBUTION_RATE,
   bondPrice: DEFAULT_BOND_PRICE,
   mortgageYears: DEFAULT_MORTGAGE_YEARS,
-  bankRate: DEFAULT_BANK_RATE,
-  bankYears: DEFAULT_BANK_YEARS,
 };
 
 describe('annuity', () => {
@@ -44,9 +41,10 @@ describe('calculateLoan', () => {
 
     expect(r.maxMortgageCash).toBe(9_600_000);
     expect(r.mortgageCash).toBe(3_664_980);
-    expect(r.bankLoan).toBe(0);
     expect(r.mortgagePrincipal).toBeCloseTo(3_739_775.51, 2);
     expect(r.downPaymentShortfall).toBe(0);
+    expect(r.minDownPaymentForLtv).toBe(0);
+    expect(r.totalDebt).toBe(r.mortgagePrincipal);
   });
 
   it('belåner købesummen', () => {
@@ -54,18 +52,29 @@ describe('calculateLoan', () => {
 
     expect(r.maxMortgageCash).toBe(5_360_320);
     expect(r.mortgageCash).toBe(3_664_980);
-    expect(r.bankLoan).toBe(0);
   });
 
-  it('lægger resten i et banklån, når realkreditgrænsen er nået', () => {
+  it('kræver en større udbetaling, når lånebehovet overstiger grænsen', () => {
     const r = calculateLoan({
       ...BASE,
       ownFinancing: PURCHASE_PRICE,
       lendingBasis: 'purchase',
     });
 
+    expect(r.toFinance).toBeGreaterThan(r.maxMortgageCash);
+    expect(r.minDownPaymentForLtv).toBe(1_340_080);
+  });
+
+  it('holder sig inden for grænsen med den krævede udbetaling', () => {
+    const r = calculateLoan({
+      ...BASE,
+      ownFinancing: PURCHASE_PRICE,
+      lendingBasis: 'purchase',
+      downPayment: 1_340_080,
+    });
+
+    expect(r.toFinance).toBeLessThanOrEqual(r.maxMortgageCash);
     expect(r.mortgageCash).toBe(5_360_320);
-    expect(r.bankLoan).toBe(1_005_060);
   });
 
   it('måler udbetalingen mod långiveres krav', () => {
@@ -84,6 +93,7 @@ describe('calculateLoan', () => {
       r.mortgagePayment + r.mortgageContribution,
       6,
     );
+    expect(r.totalMonthly).toBe(r.mortgageMonthly);
   });
 
   it('fordeler hele egenfinansieringen for tilfældige gyldige input', () => {
@@ -94,19 +104,31 @@ describe('calculateLoan', () => {
     };
 
     for (let i = 0; i < 200; i++) {
+      const marketValue = Math.round(random() * 20_000_000);
       const ownFinancing = Math.round(random() * PURCHASE_PRICE);
+      const lendingBasis = random() < 0.5 ? 'market' : 'purchase';
+
+      // Udbetalingen skal være stor nok til, at realkredit kan dække resten.
+      const basis =
+        lendingBasis === 'market'
+          ? Math.max(marketValue, PURCHASE_PRICE)
+          : PURCHASE_PRICE;
+      const minDown = Math.ceil(
+        Math.max(0, ownFinancing - MORTGAGE_LTV_MAX * basis),
+      );
+      const downPayment =
+        minDown + Math.round(random() * (ownFinancing - minDown));
+
       const input: LoanInput = {
         ...BASE,
-        marketValue: Math.round(random() * 20_000_000),
+        marketValue,
         ownFinancing,
-        lendingBasis: random() < 0.5 ? 'market' : 'purchase',
-        downPayment: Math.round(random() * ownFinancing),
+        lendingBasis,
+        downPayment,
       };
       const r = calculateLoan(input);
 
-      expect(input.downPayment + r.mortgageCash + r.bankLoan).toBe(
-        input.ownFinancing,
-      );
+      expect(input.downPayment + r.mortgageCash).toBe(input.ownFinancing);
       expect(r.mortgageCash).toBeLessThanOrEqual(r.maxMortgageCash);
     }
   });

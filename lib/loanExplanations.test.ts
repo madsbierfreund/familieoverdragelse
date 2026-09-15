@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { PURCHASE_PRICE } from './constants';
 import { calculateLoan, type LoanInput } from './loan';
 import {
-  DEFAULT_BANK_RATE,
-  DEFAULT_BANK_YEARS,
   DEFAULT_BOND_PRICE,
   DEFAULT_CONTRIBUTION_RATE,
   DEFAULT_MORTGAGE_RATE,
@@ -21,8 +19,6 @@ const BASE: LoanInput = {
   contributionRate: DEFAULT_CONTRIBUTION_RATE,
   bondPrice: DEFAULT_BOND_PRICE,
   mortgageYears: DEFAULT_MORTGAGE_YEARS,
-  bankRate: DEFAULT_BANK_RATE,
-  bankYears: DEFAULT_BANK_YEARS,
 };
 
 function texts(input: LoanInput) {
@@ -35,6 +31,13 @@ describe('explainLoan', () => {
       'Den del af købesummen på 6.700.400 kr., som datteren selv finansierer. ' +
         'Resten på 2.700.400 kr. lånes af faren via gældsbrevet.',
     );
+  });
+
+  it('forklarer hvad de to belåningsgrundlag giver i lån', () => {
+    const t = texts(BASE);
+
+    expect(t.lendingBasis).toContain('højst 9.600.000 kr.');
+    expect(t.lendingBasis).toContain('højst 5.360.320 kr.');
   });
 
   it('forklarer egenfinansieringen, når hele købesummen betales selv', () => {

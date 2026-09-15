@@ -5,8 +5,6 @@ import { PURCHASE_PRICE } from '@/lib/constants';
 import { decimal, fmt } from '@/lib/format';
 import { calculateLoan, type LendingBasis, type LoanInput } from '@/lib/loan';
 import {
-  DEFAULT_BANK_RATE,
-  DEFAULT_BANK_YEARS,
   DEFAULT_BOND_PRICE,
   DEFAULT_CONTRIBUTION_RATE,
   DEFAULT_MORTGAGE_RATE,
@@ -31,8 +29,6 @@ const LOAN_DEFAULTS: LoanSettings = {
   contributionRate: DEFAULT_CONTRIBUTION_RATE,
   bondPrice: DEFAULT_BOND_PRICE,
   mortgageYears: DEFAULT_MORTGAGE_YEARS,
-  bankRate: DEFAULT_BANK_RATE,
-  bankYears: DEFAULT_BANK_YEARS,
 };
 
 const LOAN_RAW_DEFAULTS: Record<LoanFieldName, string> = {
@@ -41,21 +37,14 @@ const LOAN_RAW_DEFAULTS: Record<LoanFieldName, string> = {
   contributionRate: decimal(DEFAULT_CONTRIBUTION_RATE * 100, 2, 2),
   bondPrice: decimal(DEFAULT_BOND_PRICE),
   mortgageYears: String(DEFAULT_MORTGAGE_YEARS),
-  bankRate: decimal(DEFAULT_BANK_RATE * 100, 2, 2),
-  bankYears: String(DEFAULT_BANK_YEARS),
 };
 
 /** Felter der indtastes som procent og gemmes som brøkdel. */
-const RATE_FIELDS: LoanFieldName[] = [
-  'mortgageRate',
-  'contributionRate',
-  'bankRate',
-];
+const RATE_FIELDS: LoanFieldName[] = ['mortgageRate', 'contributionRate'];
 
 const LOAN_NEGATIVE_MESSAGE = 'Indtast positive tal.';
 const BOND_PRICE_MESSAGE = `Kurs skal være mellem ${MIN_BOND_PRICE} og ${MAX_BOND_PRICE}.`;
-const YEARS_MESSAGE = (loan: string) =>
-  `Løbetid for ${loan} skal være et helt antal år mellem ${MIN_YEARS} og ${MAX_YEARS}.`;
+const YEARS_MESSAGE = `Løbetid for realkreditlån skal være et helt antal år mellem ${MIN_YEARS} og ${MAX_YEARS}.`;
 
 /** Parser et tal med komma eller punktum som decimalseparator. */
 function parseDecimal(raw: string): number | null {
@@ -72,8 +61,32 @@ function readLoanField(name: LoanFieldName, raw: string): number | null {
   return RATE_FIELDS.includes(name) ? value / 100 : value;
 }
 
+/** Det aktuelle sæt værdier, eller null hvis et felt ikke er et tal. */
+function buildInput(
+  raw: Record<LoanFieldName, string>,
+  lendingBasis: LendingBasis,
+  marketValue: number,
+  ownFinancing: number,
+): LoanInput | null {
+  const values = {} as Record<LoanFieldName, number>;
+  for (const name of Object.keys(raw) as LoanFieldName[]) {
+    const value = readLoanField(name, raw[name]);
+    if (value === null) return null;
+    values[name] = value;
+  }
+  return { ...values, lendingBasis, marketValue, ownFinancing };
+}
+
+function sameInput(a: LoanInput, b: LoanInput): boolean {
+  return (Object.keys(a) as (keyof LoanInput)[]).every(
+    (key) => a[key] === b[key],
+  );
+}
+
 function loanErrorsFor(
   raw: Record<LoanFieldName, string>,
+  lendingBasis: LendingBasis,
+  marketValue: number,
   ownFinancing: number,
 ): string[] {
   const messages: string[] = [];
@@ -101,17 +114,27 @@ function loanErrorsFor(
     messages.push(BOND_PRICE_MESSAGE);
   }
 
-  const years: [LoanFieldName, string][] = [
-    ['mortgageYears', 'realkreditlån'],
-    ['bankYears', 'banklån'],
-  ];
-  for (const [name, loan] of years) {
-    const value = parseDecimal(raw[name]);
-    if (
-      value !== null &&
-      (!Number.isInteger(value) || value < MIN_YEARS || value > MAX_YEARS)
-    ) {
-      messages.push(YEARS_MESSAGE(loan));
+  const mortgageYears = parseDecimal(raw.mortgageYears);
+  if (
+    mortgageYears !== null &&
+    (!Number.isInteger(mortgageYears) ||
+      mortgageYears < MIN_YEARS ||
+      mortgageYears > MAX_YEARS)
+  ) {
+    messages.push(YEARS_MESSAGE);
+  }
+
+  // Realkreditgrænsen afhænger også af belåningsgrundlaget og af de beløb,
+  // arveberegneren leverer, så den prøves på hele sættet.
+  const input = buildInput(raw, lendingBasis, marketValue, ownFinancing);
+  if (input !== null && messages.length === 0) {
+    const { maxMortgageCash, toFinance, minDownPaymentForLtv } =
+      calculateLoan(input);
+    if (toFinance > maxMortgageCash) {
+      messages.push(
+        `Realkredit kan højst dække ${fmt(maxMortgageCash)} kr. Kontant ` +
+          `udbetaling skal derfor være mindst ${fmt(minDownPaymentForLtv)} kr.`,
+      );
     }
   }
 
@@ -126,7 +149,8 @@ export default function LoanSection({
   ownFinancing: number;
 }) {
   // `input` holder det senest gyldige sæt værdier, så resultaterne bliver
-  // stående, mens man taster et ugyldigt tal.
+  // stående, mens man taster et ugyldigt tal. `raw` og `lendingBasis` er det,
+  // felterne viser lige nu.
   const [input, setInput] = useState<LoanInput>({
     ...LOAN_DEFAULTS,
     marketValue,
@@ -134,17 +158,18 @@ export default function LoanSection({
   });
   const [raw, setRaw] =
     useState<Record<LoanFieldName, string>>(LOAN_RAW_DEFAULTS);
+  const [lendingBasis, setLendingBasis] = useState<LendingBasis>(
+    LOAN_DEFAULTS.lendingBasis,
+  );
 
-  const errors = loanErrorsFor(raw, ownFinancing);
+  const errors = loanErrorsFor(raw, lendingBasis, marketValue, ownFinancing);
 
-  // Markedsværdi og egenfinansiering kommer fra arveberegneren. En ny
-  // egenfinansiering kan gøre udbetalingen for stor, og så venter opdateringen,
-  // til beløbene passer sammen igen.
-  if (
-    errors.length === 0 &&
-    (input.marketValue !== marketValue || input.ownFinancing !== ownFinancing)
-  ) {
-    setInput({ ...input, marketValue, ownFinancing });
+  // Markedsværdi og egenfinansiering kommer fra arveberegneren, så et gyldigt
+  // sæt værdier kan blive ugyldigt uden et tastetryk her. Resultaterne følger
+  // først med, når alle felterne passer sammen igen.
+  const candidate = buildInput(raw, lendingBasis, marketValue, ownFinancing);
+  if (errors.length === 0 && candidate !== null && !sameInput(candidate, input)) {
+    setInput(candidate);
   }
 
   const result = useMemo(() => calculateLoan(input), [input]);
@@ -154,28 +179,7 @@ export default function LoanSection({
   );
 
   function update(name: LoanFieldName, text: string) {
-    const next = { ...raw, [name]: text };
-    setRaw(next);
-    if (loanErrorsFor(next, ownFinancing).length === 0) {
-      setInput({
-        marketValue,
-        ownFinancing,
-        lendingBasis: input.lendingBasis,
-        downPayment: readLoanField('downPayment', next.downPayment) as number,
-        mortgageRate: readLoanField('mortgageRate', next.mortgageRate) as number,
-        contributionRate: readLoanField(
-          'contributionRate',
-          next.contributionRate,
-        ) as number,
-        bondPrice: readLoanField('bondPrice', next.bondPrice) as number,
-        mortgageYears: readLoanField(
-          'mortgageYears',
-          next.mortgageYears,
-        ) as number,
-        bankRate: readLoanField('bankRate', next.bankRate) as number,
-        bankYears: readLoanField('bankYears', next.bankYears) as number,
-      });
-    }
+    setRaw({ ...raw, [name]: text });
   }
 
   const fieldInvalid = (name: LoanFieldName) => {
@@ -185,7 +189,7 @@ export default function LoanSection({
     if (name === 'bondPrice') {
       return value < MIN_BOND_PRICE || value > MAX_BOND_PRICE;
     }
-    if (name === 'mortgageYears' || name === 'bankYears') {
+    if (name === 'mortgageYears') {
       return !Number.isInteger(value) || value < MIN_YEARS || value > MAX_YEARS;
     }
     return false;
@@ -240,13 +244,16 @@ export default function LoanSection({
                   type="radio"
                   name="lendingBasis"
                   value={value}
-                  checked={input.lendingBasis === value}
-                  onChange={() => setInput({ ...input, lendingBasis: value })}
+                  checked={lendingBasis === value}
+                  onChange={() => setLendingBasis(value)}
                 />
                 {label}
               </label>
             ))}
           </div>
+          <p className={`${styles.explanation} ${styles.basisExplanation}`}>
+            {explanations.lendingBasis}
+          </p>
         </div>
 
         <div className={styles.field}>
@@ -281,8 +288,6 @@ export default function LoanSection({
         {numberField('contributionRate', 'Bidragssats (%)', true)}
         {numberField('bondPrice', 'Kurs', true)}
         {numberField('mortgageYears', 'Løbetid realkredit (år)')}
-        {numberField('bankRate', 'Rente banklån (%)', true)}
-        {numberField('bankYears', 'Løbetid banklån (år)')}
 
         <p className={styles.error} role="alert">
           {errors.join(' ')}
@@ -290,17 +295,11 @@ export default function LoanSection({
       </div>
 
       <section className={styles.section}>
-        <div className={styles.figures}>
+        <div className={`${styles.figures} ${styles.figuresPair}`}>
           <div className={styles.figure}>
             <span className={styles.figureLabel}>Realkreditlån (hovedstol)</span>
             <span className={styles.figureValue}>
               {fmt(result.mortgagePrincipal)} kr.
-            </span>
-          </div>
-          <div className={styles.figure}>
-            <span className={styles.figureLabel}>Banklån</span>
-            <span className={styles.figureValue}>
-              {fmt(result.bankLoan)} kr.
             </span>
           </div>
           <div className={styles.figure}>
@@ -338,11 +337,6 @@ export default function LoanSection({
               amount={result.mortgagePrincipal}
               explanation={explanations.mortgagePrincipal}
             />
-            <LedgerRow
-              label="Banklån"
-              amount={result.bankLoan}
-              explanation={explanations.bankLoan}
-            />
           </tbody>
         </table>
       </section>
@@ -362,11 +356,6 @@ export default function LoanSection({
               explanation={explanations.mortgageContribution}
             />
             <LedgerRow
-              label="Banklån"
-              amount={result.bankMonthly}
-              explanation={explanations.bankMonthly}
-            />
-            <LedgerRow
               label="I alt"
               amount={result.totalMonthly}
               explanation={explanations.total}
@@ -376,11 +365,7 @@ export default function LoanSection({
         </table>
       </section>
 
-      <p className={styles.footnote}>
-        Standardværdier: debitorrente og bidragssats fra Realkredit Danmark,
-        januar 2026. Kurs og bankrente er antagelser. Tjek aktuelle tilbud fra
-        långiver.
-      </p>
+      <p className={styles.footnote}>{explanations.footnote}</p>
     </>
   );
 }

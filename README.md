@@ -10,7 +10,7 @@ difference between market value and purchase price, plus the forgiven debt,
 counts as an advance on her inheritance. The app shows how the estate is then
 divided between her and her four siblings — both without and with an
 equalization agreement (*udligningsaftale*) — and how her own payment can be
-financed with a cash down payment, a mortgage loan and a bank loan.
+financed with a cash down payment and a mortgage loan.
 
 Everything runs client-side: no backend, no database, no API routes.
 

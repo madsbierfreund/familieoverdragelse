@@ -20,10 +20,6 @@ export interface LoanInput {
   bondPrice: number;
   /** Løbetid på realkreditlånet i år. */
   mortgageYears: number;
-  /** Rente på banklånet pr. år. */
-  bankRate: number;
-  /** Løbetid på banklånet i år. */
-  bankYears: number;
 }
 
 export interface LoanResult {
@@ -35,23 +31,21 @@ export interface LoanResult {
   toFinance: number;
   /** Udbetalt realkreditlån. */
   mortgageCash: number;
-  /** Banklån til resten. */
-  bankLoan: number;
   /** Realkreditlånets hovedstol. */
   mortgagePrincipal: number;
   /** Hvor meget udbetalingen mangler i forhold til långiveres krav. */
   downPaymentShortfall: number;
+  /** Mindste udbetaling, hvis realkredit skal dække resten. */
+  minDownPaymentForLtv: number;
   /** Månedlig rente og afdrag på realkreditlånet. */
   mortgagePayment: number;
   /** Månedligt bidrag, første år. */
   mortgageContribution: number;
   /** Samlet månedlig ydelse på realkreditlånet. */
   mortgageMonthly: number;
-  /** Månedlig ydelse på banklånet. */
-  bankMonthly: number;
   /** Samlet månedlig ydelse. */
   totalMonthly: number;
-  /** Samlet gæld (hovedstol + banklån). */
+  /** Samlet gæld. */
   totalDebt: number;
 }
 
@@ -74,7 +68,7 @@ export function annuity(
 }
 
 /**
- * Fordeler egenfinansieringen på udbetaling, realkreditlån og banklån
+ * Fordeler egenfinansieringen på kontant udbetaling og realkreditlån
  * og beregner den månedlige ydelse i det første år.
  * Ren funktion uden afhængigheder til UI.
  */
@@ -88,8 +82,6 @@ export function calculateLoan(input: LoanInput): LoanResult {
     contributionRate,
     bondPrice,
     mortgageYears,
-    bankRate,
-    bankYears,
   } = input;
 
   const basis =
@@ -99,14 +91,14 @@ export function calculateLoan(input: LoanInput): LoanResult {
 
   const maxMortgageCash = MORTGAGE_LTV_MAX * basis;
   const toFinance = ownFinancing - downPayment;
-  const mortgageCash = Math.min(toFinance, maxMortgageCash);
-  const bankLoan = toFinance - mortgageCash;
+  const mortgageCash = toFinance;
   const mortgagePrincipal = mortgageCash / (bondPrice / 100);
 
   const downPaymentShortfall = Math.max(
     0,
     MIN_DOWN_PAYMENT_SHARE * PURCHASE_PRICE - downPayment,
   );
+  const minDownPaymentForLtv = Math.max(0, ownFinancing - maxMortgageCash);
 
   const mortgagePayment = annuity(
     mortgagePrincipal,
@@ -116,21 +108,19 @@ export function calculateLoan(input: LoanInput): LoanResult {
   // Bidraget beregnes af hovedstolen og gælder derfor kun det første år.
   const mortgageContribution = (mortgagePrincipal * contributionRate) / 12;
   const mortgageMonthly = mortgagePayment + mortgageContribution;
-  const bankMonthly = annuity(bankLoan, bankRate, bankYears);
 
   return {
     basis,
     maxMortgageCash,
     toFinance,
     mortgageCash,
-    bankLoan,
     mortgagePrincipal,
     downPaymentShortfall,
+    minDownPaymentForLtv,
     mortgagePayment,
     mortgageContribution,
     mortgageMonthly,
-    bankMonthly,
-    totalMonthly: mortgageMonthly + bankMonthly,
-    totalDebt: mortgagePrincipal + bankLoan,
+    totalMonthly: mortgageMonthly,
+    totalDebt: mortgagePrincipal,
   };
 }

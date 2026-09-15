@@ -93,6 +93,11 @@
   margin: 0;
 }
 
+.basisExplanation {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 .slider {
   width: 100%;
   accent-color: var(--ink);
@@ -132,6 +137,10 @@
   border: 1px solid var(--lines);
   border-radius: 6px;
   overflow: hidden;
+}
+
+.figuresPair {
+  grid-template-columns: repeat(2, 1fr);
 }
 
 .figure {
@@ -288,6 +297,10 @@
   }
 
   .fieldWide {
+    grid-template-columns: 1fr;
+  }
+
+  .figuresPair {
     grid-template-columns: 1fr;
   }
 }
