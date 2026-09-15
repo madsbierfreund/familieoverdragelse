@@ -283,8 +283,21 @@ describe('calculateSettlement', () => {
           otherAssets: Math.round(random() * 30_000_000),
           ownFinancing: Math.round(random() * PURCHASE_PRICE),
         };
+        // Udbetalingen skal være mindst så stor, at realkredit kan dække
+        // resten, og kan aldrig overstige egenfinansieringen.
+        const minDown = Math.ceil(
+          Math.max(
+            0,
+            values.ownFinancing -
+              MORTGAGE_LTV_MAX * Math.max(values.marketValue, PURCHASE_PRICE),
+          ),
+        );
+        const downPayment =
+          minDown + Math.floor(random() * (values.ownFinancing - minDown + 1));
+
         const base = settlementInput(values, {
           loanType,
+          loan: { downPayment },
           newMortgageCash: 0,
         });
         const max = calculateSettlement(base).maxNewMortgageCash;
@@ -293,6 +306,12 @@ describe('calculateSettlement', () => {
           newMortgageCash: Math.floor(random() * max),
         };
         const r = calculateSettlement(input);
+
+        // Det genererede lån skal selv være gyldigt.
+        expect(downPayment).toBeLessThanOrEqual(values.ownFinancing);
+        expect(base.loanResult.mortgageCash).toBeLessThanOrEqual(
+          base.loanResult.maxMortgageCash,
+        );
 
         expect(r.siblingTotal).toBeCloseTo(
           base.inheritance.withAgreement.siblingEach,
