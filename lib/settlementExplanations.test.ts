@@ -86,6 +86,30 @@ describe('explainSettlement', () => {
     }
   });
 
+  it('beskriver hvert lån ud fra dets egen lånetype', () => {
+    const t = texts(DEFAULTS, {
+      loanType: 'fixedInterestOnly',
+      deathLoanType: 'flex',
+    });
+
+    // Lånet fra købet er afdragsfrit, det nye er et flexlån med afdrag.
+    expect(t.existingMortgage).toContain('Lånet er stadig afdragsfrit');
+    expect(t.newMortgage).toBe(
+      'Lånet optages som flexlån (F5) med afdrag med samme løbetid som det ' +
+        'eksisterende lån.',
+    );
+    expect(t.newMortgage).not.toContain('afdragsfri periode');
+
+    const other = texts(DEFAULTS, {
+      loanType: 'fixed',
+      deathLoanType: 'fixedInterestOnly',
+    });
+    expect(other.existingMortgage).not.toContain('afdragsfrit');
+    expect(other.newMortgage).toContain(
+      'Det nye lån får sin egen afdragsfri periode på 10 år fra dødsfaldet.',
+    );
+  });
+
   it('henter antallet af søskende fra konstanterne', () => {
     const t = texts(DEFAULTS, { newMortgageCash: 3_000_000 });
 

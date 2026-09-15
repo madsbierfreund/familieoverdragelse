@@ -40,8 +40,8 @@ Everything runs client-side: no backend, no database, no API routes.
 - `lib/settlementExplanations.ts` — `explainSettlement(input, result)`, its texts
 - `lib/settlementExplanations.test.ts` — unit tests for those texts
 - `lib/testFixtures.ts` — shared test setup for the loan and the settlement
-- `app/page.tsx` — the shell: the heading and the state the calculators share
-- `app/components/LoanTypePicker.tsx` — the shared loan type choice
+- `app/page.tsx` — the shell: the state the calculators share, and the two loan type choices
+- `app/components/LoanTypePicker.tsx` — one loan's type choice, used twice
 - `app/components/InheritanceSection.tsx` — the inheritance calculator UI
 - `app/components/LoanSection.tsx` — the financing calculator UI
 - `app/components/SettlementSection.tsx` — the settlement calculator UI

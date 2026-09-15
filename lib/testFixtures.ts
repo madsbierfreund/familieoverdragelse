@@ -35,7 +35,10 @@ export function loanInput(
 }
 
 interface Overrides {
+  /** Lånetypen ved købet. Sætter også lånet ved dødsfaldet, hvis intet andet. */
   loanType?: LoanType;
+  /** Lånetypen ved dødsfaldet, når de to lån skal være forskellige. */
+  deathLoanType?: LoanType;
   loan?: Partial<LoanInput>;
   newMortgageCash?: number;
   noteRate?: number;
@@ -50,7 +53,8 @@ export function settlementInput(
   values: CalculationInput,
   overrides: Overrides = {},
 ): SettlementInput {
-  const loan = loanInput(overrides.loanType ?? DEFAULT_LOAN_TYPE, {
+  const purchaseLoanType = overrides.loanType ?? DEFAULT_LOAN_TYPE;
+  const loan = loanInput(purchaseLoanType, {
     marketValue: values.marketValue,
     ownFinancing: values.ownFinancing,
     ...overrides.loan,
@@ -61,6 +65,7 @@ export function settlementInput(
     otherAssets: values.otherAssets,
     loan,
     loanResult: calculateLoan(loan),
+    deathLoanType: overrides.deathLoanType ?? purchaseLoanType,
     newMortgageCash: 0,
     noteRate: overrides.noteRate ?? DEFAULT_NOTE_RATE,
     noteYears: overrides.noteYears ?? DEFAULT_NOTE_YEARS,

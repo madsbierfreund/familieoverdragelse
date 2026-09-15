@@ -75,6 +75,12 @@
   grid-template-columns: 1fr auto;
 }
 
+/* Lånetypevalg: etiketten står over knapperne, så den ikke klemmes sammen. */
+.typeField {
+  display: grid;
+  gap: 8px;
+}
+
 .radioGroup {
   display: flex;
   flex-wrap: wrap;

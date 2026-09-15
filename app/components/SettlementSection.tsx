@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { calculate, type CalculationInput } from '@/lib/calculate';
 import { fmt } from '@/lib/format';
 import { calculateLoan, type LoanInput } from '@/lib/loan';
-import { MAX_YEARS, MIN_YEARS } from '@/lib/loanConstants';
+import { type LoanType, MAX_YEARS, MIN_YEARS } from '@/lib/loanConstants';
 import {
   borrowingLimit,
   calculateSettlement,
@@ -83,9 +83,12 @@ function errorsFor(
 export default function SettlementSection({
   values,
   loanInput,
+  deathLoanType,
 }: {
   values: CalculationInput;
   loanInput: LoanInput;
+  /** Lånetypen på det nye lån, der optages ved dødsfaldet. */
+  deathLoanType: LoanType;
 }) {
   const [raw, setRaw] =
     useState<Record<SettlementFieldName, string>>(RAW_DEFAULTS);
@@ -104,9 +107,10 @@ export default function SettlementSection({
       otherAssets: values.otherAssets,
       loan: loanInput,
       loanResult,
+      deathLoanType,
       ...note,
     };
-  }, [values, loanInput, note]);
+  }, [values, loanInput, deathLoanType, note]);
 
   // Grænsen afhænger ikke af det valgte beløb, så den kan læses af en prøve.
   // Den skæres til hele kroner og bruges både til feltet, skyderen og

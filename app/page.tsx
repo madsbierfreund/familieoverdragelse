@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import type { CalculationInput } from '@/lib/calculate';
-import { INTRO } from '@/lib/explanations';
 import type { LoanInput } from '@/lib/loan';
 import { DEFAULT_LOAN_TYPE, type LoanType } from '@/lib/loanConstants';
 import InheritanceSection from './components/InheritanceSection';
@@ -21,7 +20,11 @@ export default function Page() {
   // Markedsværdi og egenfinansiering deles af beregnerne, og udligningen
   // bygger oven på lånets værdier.
   const [values, setValues] = useState<CalculationInput>(DEFAULTS);
-  const [loanType, setLoanType] = useState<LoanType>(DEFAULT_LOAN_TYPE);
+  // De to lån vælges hver for sig: et ved købet og et ved dødsfaldet.
+  const [purchaseLoanType, setPurchaseLoanType] =
+    useState<LoanType>(DEFAULT_LOAN_TYPE);
+  const [deathLoanType, setDeathLoanType] =
+    useState<LoanType>(DEFAULT_LOAN_TYPE);
   const [loanInput, setLoanInput] = useState<LoanInput>({
     ...LOAN_DEFAULTS,
     loanType: DEFAULT_LOAN_TYPE,
@@ -31,18 +34,34 @@ export default function Page() {
 
   return (
     <main className={styles.main}>
-      <h1 className={styles.heading}>Familieoverdragelse af anpart A</h1>
-      <p className={styles.intro}>{INTRO}</p>
-
-      <LoanTypePicker loanType={loanType} onChange={setLoanType} />
       <InheritanceSection values={values} onChange={setValues} />
+
+      <div className={styles.inputs}>
+        <LoanTypePicker
+          name="purchaseLoanType"
+          label="Låntype ved købet"
+          loanType={purchaseLoanType}
+          onChange={setPurchaseLoanType}
+        />
+        <LoanTypePicker
+          name="deathLoanType"
+          label="Låntype ved dødsfaldet"
+          loanType={deathLoanType}
+          onChange={setDeathLoanType}
+        />
+      </div>
+
       <LoanSection
         marketValue={values.marketValue}
         ownFinancing={values.ownFinancing}
-        loanType={loanType}
+        loanType={purchaseLoanType}
         onInput={setLoanInput}
       />
-      <SettlementSection values={values} loanInput={loanInput} />
+      <SettlementSection
+        values={values}
+        loanInput={loanInput}
+        deathLoanType={deathLoanType}
+      />
     </main>
   );
 }

@@ -31,7 +31,8 @@ export function explainSettlement(
   input: SettlementInput,
   result: SettlementResult,
 ): SettlementExplanations {
-  const { inheritance, otherAssets, loan, noteRate, noteYears } = input;
+  const { inheritance, otherAssets, loan, deathLoanType, noteRate, noteYears } =
+    input;
 
   const noSettlement =
     'Datterens arv dækker restgælden. Hun skal ikke betale noget til boet' +
@@ -67,8 +68,11 @@ export function explainSettlement(
         ].join(' ')
       : 'Hele beløbet dækkes af det nye realkreditlån, så der er ikke behov for et pantebrev.';
 
-  const interestOnlyMonths = LOAN_TYPES[loan.loanType].interestOnlyYears * 12;
-  const stillInterestOnly = result.deathYear * 12 < interestOnlyMonths;
+  // Det eksisterende lån følger lånetypen fra købet, det nye sin egen.
+  const purchaseInterestOnly =
+    LOAN_TYPES[loan.loanType].interestOnlyYears * 12;
+  const deathType = LOAN_TYPES[deathLoanType];
+  const stillInterestOnly = result.deathYear * 12 < purchaseInterestOnly;
 
   let existingMortgage = [
     `Restgælden efter ${result.deathYear} års afdrag. Ydelsen er uændret,`,
@@ -79,9 +83,14 @@ export function explainSettlement(
       ' Lånet er stadig afdragsfrit, så restgælden er den samme som ved købet.';
   }
 
-  let newMortgage =
-    'Samme rente, bidragssats, kurs og løbetid som det eksisterende lån.';
-  if (interestOnlyMonths > 0) {
+  // Etiketten står midt i en sætning, så kun forbogstavet skrives småt.
+  const deathLabel =
+    deathType.label.charAt(0).toLowerCase() + deathType.label.slice(1);
+  let newMortgage = [
+    `Lånet optages som ${deathLabel} med samme løbetid som det`,
+    'eksisterende lån.',
+  ].join(' ');
+  if (deathType.interestOnlyYears > 0) {
     newMortgage += [
       '',
       `Det nye lån får sin egen afdragsfri periode på ${INTEREST_ONLY_YEARS}`,

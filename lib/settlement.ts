@@ -1,7 +1,11 @@
 import type { CalculationResult } from './calculate';
 import { GIFT_YEARS, SIBLINGS } from './constants';
 import { annuity, schedule, type LoanInput, type LoanResult } from './loan';
-import { LOAN_TYPES, MORTGAGE_LTV_MAX } from './loanConstants';
+import {
+  LOAN_TYPES,
+  type LoanType,
+  MORTGAGE_LTV_MAX,
+} from './loanConstants';
 
 export interface SettlementInput {
   /** Resultatet af arveberegningen. */
@@ -12,6 +16,8 @@ export interface SettlementInput {
   loan: LoanInput;
   /** Resultatet af låneberegningen. */
   loanResult: LoanResult;
+  /** Lånetypen på det nye lån, der optages ved dødsfaldet. */
+  deathLoanType: LoanType;
   /** Udbetalt beløb på et nyt realkreditlån. */
   newMortgageCash: number;
   /** Rente på pantebrevet pr. år. */
@@ -84,6 +90,7 @@ export function calculateSettlement(
     otherAssets,
     loan,
     loanResult,
+    deathLoanType,
     newMortgageCash,
     noteRate,
     noteYears,
@@ -93,12 +100,12 @@ export function calculateSettlement(
   const daughterOwes = inheritance.withAgreement.daughterPays;
   const daughterReceives = inheritance.withAgreement.daughterPaidOut;
 
-  const interestOnlyMonths = LOAN_TYPES[loan.loanType].interestOnlyYears * 12;
+  // Det eksisterende lån blev optaget ved købet og følger sin egen lånetype.
   const existingPlan = schedule(
     loanResult.mortgagePrincipal,
     loan.mortgageRate,
     loan.mortgageYears,
-    interestOnlyMonths,
+    LOAN_TYPES[loan.loanType].interestOnlyYears * 12,
   );
   const months = deathYear * 12;
   const existingBalance = existingPlan.balanceAfter(months);
@@ -113,21 +120,23 @@ export function calculateSettlement(
     0,
     MORTGAGE_LTV_MAX * loan.marketValue - existingBalance,
   );
+  // Det nye lån optages ved dødsfaldet og har sin egen lånetype med dens
+  // rente, bidragssats og kurs. En afdragsfri periode starter derfor forfra.
+  const deathType = LOAN_TYPES[deathLoanType];
   const maxNewMortgageCash = Math.min(
     daughterOwes,
-    (maxNewPrincipal * loan.bondPrice) / 100,
+    (maxNewPrincipal * deathType.bondPrice) / 100,
   );
 
-  // Det nye lån har samme vilkår, så en afdragsfri periode starter forfra.
-  const newPrincipal = newMortgageCash / (loan.bondPrice / 100);
+  const newPrincipal = newMortgageCash / (deathType.bondPrice / 100);
   const newPlan = schedule(
     newPrincipal,
-    loan.mortgageRate,
+    deathType.rate,
     loan.mortgageYears,
-    interestOnlyMonths,
+    deathType.interestOnlyYears * 12,
   );
   const newMonthly =
-    newPlan.paymentInMonth(1) + (newPrincipal * loan.contributionRate) / 12;
+    newPlan.paymentInMonth(1) + (newPrincipal * deathType.contribution) / 12;
 
   const noteAmount = daughterOwes - newMortgageCash;
   const noteMonthly = annuity(noteAmount, noteRate, noteYears);

@@ -114,6 +114,67 @@ describe('calculateSettlement', () => {
     expect(r.pledgeRoom).toBeCloseTo(2_712_620.22, 2);
   });
 
+  it('lader hvert lån følge sin egen lånetype', () => {
+    const both = settlementInput(DEFAULTS, { loanType: 'fixed' });
+    const mixed = settlementInput(DEFAULTS, {
+      loanType: 'fixed',
+      deathLoanType: 'flex',
+    });
+
+    // Lånet fra købet rører sig ikke, når lånet ved dødsfaldet skifter type.
+    expect(mixed.loanResult).toEqual(both.loanResult);
+    const a = calculateSettlement(both);
+    const b = calculateSettlement(mixed);
+    expect(b.existingBalance).toBe(a.existingBalance);
+    expect(b.existingMonthly).toBe(a.existingMonthly);
+
+    // Det nye lån optages til flexlånets kurs 100, rente og bidrag.
+    expect(b.newPrincipal).toBeCloseTo(6_000_000, 2);
+    expect(b.newMonthly).toBeCloseTo(30_692.68, 2);
+    expect(a.newPrincipal).toBeCloseTo(6_122_448.98, 2);
+    expect(a.newMonthly).toBeCloseTo(32_349.85, 2);
+  });
+
+  it('afdrager det nye lån, selv om lånet fra købet er afdragsfrit', () => {
+    const r = calculateSettlement(
+      settlementInput(DEFAULTS, {
+        loanType: 'fixedInterestOnly',
+        deathLoanType: 'fixed',
+      }),
+    );
+
+    // Restgælden ved dødsfaldet kommer fra lånet ved købet.
+    expect(r.existingBalance).toBeCloseTo(3_739_775.51, 2);
+    expect(r.existingMonthly).toBeCloseTo(15_364.24, 2);
+    expect(r.noteAmount).toBeCloseTo(256_980, 2);
+    // Det nye lån afdrager fra start og koster derfor mere end et afdragsfrit.
+    expect(r.newPrincipal).toBeCloseTo(5_860_224.49, 2);
+    expect(r.newMonthly).toBeCloseTo(30_964.3, 2);
+    expect(r.totalMonthly).toBeCloseTo(48_930.35, 2);
+  });
+
+  it('stiller søskendene lige for blandede lånetyper', () => {
+    for (const loanType of TYPES) {
+      for (const deathLoanType of TYPES) {
+        const base = settlementInput(DEFAULTS, {
+          loanType,
+          deathLoanType,
+          newMortgageCash: 0,
+        });
+        const max = calculateSettlement(base).maxNewMortgageCash;
+        const input = { ...base, newMortgageCash: max / 2 };
+        const r = calculateSettlement(input);
+
+        expect(r.siblingTotal).toBeCloseTo(
+          base.inheritance.withAgreement.siblingEach,
+          2,
+        );
+        expect(input.newMortgageCash + r.noteAmount).toBe(r.daughterOwes);
+        expect(r.newPrincipal).toBeLessThanOrEqual(r.maxNewPrincipal + 0.01);
+      }
+    }
+  });
+
   it.each(TYPES)(
     'stiller søskendene lige for tilfældige gyldige input (%s)',
     (loanType) => {
