@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { PURCHASE_PRICE } from './constants';
-import { annuity, calculateLoan, schedule, type LoanInput } from './loan';
+import {
+  annuity,
+  calculateLoan,
+  schedule,
+  taxSaving,
+  type LoanInput,
+} from './loan';
 import {
   LOAN_TYPES,
   type LoanType,
@@ -23,6 +29,15 @@ describe('annuity', () => {
 
   it('giver ingen ydelse uden lån', () => {
     expect(annuity(0, 0.06, 20)).toBe(0);
+  });
+});
+
+describe('taxSaving', () => {
+  it('bruger den høje sats op til grænsen og den lave derover', () => {
+    expect(taxSaving(0)).toBe(0);
+    expect(taxSaving(40_000)).toBeCloseTo(40_000 * 0.33, 6);
+    expect(taxSaving(50_000)).toBeCloseTo(16_500, 6);
+    expect(taxSaving(171_947.68)).toBeCloseTo(46_986.92, 2);
   });
 });
 

@@ -114,6 +114,99 @@ describe('calculateSettlement', () => {
     expect(r.pledgeRoom).toBeCloseTo(2_712_620.22, 2);
   });
 
+  it('anslår ydelsen efter skat ved fast rente med afdrag', () => {
+    const r = calculateSettlement(settlementInput(DEFAULTS));
+
+    expect(r.existingDeductible).toBeCloseTo(155_288.18, 2);
+    expect(r.newDeductible).toBeCloseTo(281_498.41, 2);
+    expect(r.noteDeductible).toBe(0);
+    expect(r.taxSavingYear).toBeCloseTo(113_196.65, 2);
+    expect(r.existingAfterTax).toBeCloseTo(16_238.44, 2);
+    expect(r.newAfterTax).toBeCloseTo(26_270.47, 2);
+    expect(r.noteAfterTax).toBe(0);
+    expect(r.totalAfterTax).toBeCloseTo(42_508.91, 2);
+  });
+
+  it('anslår ydelsen efter skat ved afdragsfrihed', () => {
+    const r = calculateSettlement(
+      settlementInput(DEFAULTS, { loanType: 'fixedInterestOnly' }),
+    );
+
+    expect(r.existingDeductible).toBeCloseTo(184_370.93, 2);
+    expect(r.newDeductible).toBeCloseTo(288_909.07, 2);
+    expect(r.noteDeductible).toBeCloseTo(9_890.96, 2);
+    expect(r.taxSavingYear).toBeCloseTo(124_792.74, 2);
+    expect(r.existingAfterTax).toBeCloseTo(11_395.99, 2);
+    expect(r.newAfterTax).toBeCloseTo(17_857.5, 2);
+    expect(r.noteAfterTax).toBeCloseTo(2_388.91, 2);
+    expect(r.totalAfterTax).toBeCloseTo(31_642.4, 2);
+  });
+
+  it('anslår ydelsen efter skat ved flexlån', () => {
+    const r = calculateSettlement(
+      settlementInput(DEFAULTS, { loanType: 'flex' }),
+    );
+
+    expect(r.totalDeductible).toBeCloseTo(391_542.87, 2);
+    expect(r.existingAfterTax).toBeCloseTo(15_511.32, 2);
+    expect(r.newAfterTax).toBeCloseTo(25_202.89, 2);
+    expect(r.totalAfterTax).toBeCloseTo(40_714.22, 2);
+  });
+
+  it('anslår ydelsen efter skat, når lånene har hver sin type', () => {
+    const r = calculateSettlement(
+      settlementInput(DEFAULTS, {
+        loanType: 'fixedInterestOnly',
+        deathLoanType: 'fixed',
+      }),
+    );
+
+    expect(r.existingAfterTax).toBeCloseTo(11_390.65, 2);
+    expect(r.newAfterTax).toBeCloseTo(25_157.24, 2);
+    expect(r.noteAfterTax).toBeCloseTo(2_388.63, 2);
+    expect(r.totalAfterTax).toBeCloseTo(38_936.52, 2);
+  });
+
+  it('fordeler skatteværdien fuldt ud på de tre lån', () => {
+    let seed = 1_131_966;
+    const random = () => {
+      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+      return seed / 2_147_483_648;
+    };
+
+    for (const loanType of TYPES) {
+      for (const deathLoanType of TYPES) {
+        for (let i = 0; i < 20; i++) {
+          const values = {
+            marketValue: 6_000_000 + Math.round(random() * 12_000_000),
+            otherAssets: Math.round(random() * 30_000_000),
+            ownFinancing: Math.round(random() * PURCHASE_PRICE),
+          };
+          const base = settlementInput(values, {
+            loanType,
+            deathLoanType,
+            // Udbetalingen kan aldrig overstige egenfinansieringen.
+            loan: { downPayment: Math.floor(random() * values.ownFinancing) },
+            newMortgageCash: 0,
+          });
+          const max = calculateSettlement(base).maxNewMortgageCash;
+          const r = calculateSettlement({
+            ...base,
+            newMortgageCash: Math.floor(random() * max),
+          });
+
+          expect(
+            r.existingAfterTax + r.newAfterTax + r.noteAfterTax,
+          ).toBeCloseTo(r.totalAfterTax, 2);
+          expect(r.existingAfterTax).toBeLessThanOrEqual(r.existingMonthly);
+          expect(r.newAfterTax).toBeLessThanOrEqual(r.newMonthly);
+          expect(r.noteAfterTax).toBeLessThanOrEqual(r.noteMonthly);
+          expect(r.totalAfterTax).toBeLessThanOrEqual(r.totalMonthly);
+        }
+      }
+    }
+  });
+
   it('lader hvert lån følge sin egen lånetype', () => {
     const both = settlementInput(DEFAULTS, { loanType: 'fixed' });
     const mixed = settlementInput(DEFAULTS, {

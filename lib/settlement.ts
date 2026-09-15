@@ -1,6 +1,12 @@
 import type { CalculationResult } from './calculate';
 import { GIFT_YEARS, SIBLINGS } from './constants';
-import { annuity, schedule, type LoanInput, type LoanResult } from './loan';
+import {
+  annuity,
+  schedule,
+  taxSaving,
+  type LoanInput,
+  type LoanResult,
+} from './loan';
 import {
   LOAN_TYPES,
   type LoanType,
@@ -63,6 +69,24 @@ export interface SettlementResult {
   totalDebt: number;
   /** Datterens samlede månedlige ydelse efter udligningen. */
   totalMonthly: number;
+  /** Fradragsberettigede renter og bidrag på det eksisterende lån, første år. */
+  existingDeductible: number;
+  /** Fradragsberettigede renter og bidrag på det nye lån, første år. */
+  newDeductible: number;
+  /** Fradragsberettigede renter på pantebrevet, første år. */
+  noteDeductible: number;
+  /** Fradragsberettiget i alt i det første år efter dødsfaldet. */
+  totalDeductible: number;
+  /** Anslået skatteværdi af fradraget pr. år. */
+  taxSavingYear: number;
+  /** Månedlig ydelse efter skat på det eksisterende lån. */
+  existingAfterTax: number;
+  /** Månedlig ydelse efter skat på det nye lån. */
+  newAfterTax: number;
+  /** Månedlig ydelse efter skat på pantebrevet. */
+  noteAfterTax: number;
+  /** Samlet månedlig ydelse efter skat. */
+  totalAfterTax: number;
   /** Friværdi bag realkreditlånene. */
   pledgeRoom: number;
   /** Den del af pantebrevet, der ikke er dækket af friværdi. */
@@ -151,6 +175,27 @@ export function calculateSettlement(
     loan.marketValue - existingBalance - newPrincipal,
   );
 
+  // Renter og bidrag i det første år efter dødsfaldet er fradragsberettigede.
+  // Skatteværdien fordeles på lånene efter deres andel af fradraget.
+  const existingDeductible =
+    existingPlan.interestInFirst(months + 12) -
+    existingPlan.interestInFirst(months) +
+    existingBalance * loan.contributionRate;
+  const newDeductible =
+    newPlan.interestInFirst(12) + newPrincipal * deathType.contribution;
+  const noteDeductible = schedule(
+    noteAmount,
+    noteRate,
+    noteYears,
+  ).interestInFirst(12);
+  const totalDeductible =
+    existingDeductible + newDeductible + noteDeductible;
+
+  const taxSavingYear = taxSaving(totalDeductible);
+  const share = (part: number) =>
+    totalDeductible > 0 ? part / totalDeductible : 0;
+  const totalMonthly = existingMonthly + newMonthly + noteMonthly;
+
   return {
     deathYear,
     daughterOwes,
@@ -169,7 +214,17 @@ export function calculateSettlement(
     cashPerSibling,
     siblingTotal: cashPerSibling + notePerSibling,
     totalDebt: existingBalance + newPrincipal + noteAmount,
-    totalMonthly: existingMonthly + newMonthly + noteMonthly,
+    totalMonthly,
+    existingDeductible,
+    newDeductible,
+    noteDeductible,
+    totalDeductible,
+    taxSavingYear,
+    existingAfterTax:
+      existingMonthly - (taxSavingYear * share(existingDeductible)) / 12,
+    newAfterTax: newMonthly - (taxSavingYear * share(newDeductible)) / 12,
+    noteAfterTax: noteMonthly - (taxSavingYear * share(noteDeductible)) / 12,
+    totalAfterTax: totalMonthly - taxSavingYear / 12,
     pledgeRoom,
     noteUnsecured: Math.max(0, noteAmount - pledgeRoom),
   };

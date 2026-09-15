@@ -167,6 +167,11 @@
   overflow: hidden;
 }
 
+/* Fire nøgletal står som to rækker af to. */
+.figuresQuad {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .figure {
   background: var(--panel);
   padding: 16px 18px;
@@ -306,8 +311,19 @@
     grid-column: 1 / -1;
   }
 
-  .figures {
+  .figures,
+  .figuresQuad {
     grid-template-columns: 1fr;
+  }
+
+  /* Fire kolonner skal kunne være der på en telefon. */
+  .tableQuad th,
+  .tableQuad td {
+    font-size: 0.8125rem;
+  }
+
+  .tableQuad .amount + .amount {
+    padding-left: 8px;
   }
 
   .fieldPlain {

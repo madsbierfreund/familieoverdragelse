@@ -89,6 +89,17 @@ export function annuity(
   return (principal * rate) / (1 - Math.pow(1 + rate, -months));
 }
 
+/**
+ * Skatteværdien af et års fradragsberettigede renter og bidrag.
+ * Ren funktion uden afhængigheder til UI.
+ */
+export function taxSaving(deductible: number): number {
+  return (
+    Math.min(deductible, TAX_DEDUCTION_THRESHOLD) * TAX_DEDUCTION_RATE_LOW +
+    Math.max(0, deductible - TAX_DEDUCTION_THRESHOLD) * TAX_DEDUCTION_RATE_HIGH
+  );
+}
+
 /** En afdragsplan, der kan svare på ydelse, restgæld og renter. */
 export interface Schedule {
   /** Ydelsen i en given måned, 1-indekseret. 0 efter sidste termin. */
@@ -196,9 +207,7 @@ export function calculateLoan(input: LoanInput): LoanResult {
   const firstYearInterest = plan.interestInFirst(12);
   const firstYearContribution = mortgageContribution * 12;
   const deductible = firstYearInterest + firstYearContribution;
-  const taxSavingYear =
-    Math.min(deductible, TAX_DEDUCTION_THRESHOLD) * TAX_DEDUCTION_RATE_LOW +
-    Math.max(0, deductible - TAX_DEDUCTION_THRESHOLD) * TAX_DEDUCTION_RATE_HIGH;
+  const taxSavingYear = taxSaving(deductible);
   const taxSavingMonthly = taxSavingYear / 12;
 
   return {

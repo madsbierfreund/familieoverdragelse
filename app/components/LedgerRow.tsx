@@ -6,6 +6,7 @@ export default function LedgerRow({
   label,
   amount,
   second,
+  third,
   explanation,
   total = false,
   negative = false,
@@ -14,6 +15,8 @@ export default function LedgerRow({
   amount: number;
   /** Et beløb mere i en egen kolonne, fx en månedlig ydelse. */
   second?: number;
+  /** Endnu et beløb i en egen kolonne, fx ydelsen efter skat. */
+  third?: number;
   explanation: string;
   total?: boolean;
   negative?: boolean;
@@ -29,9 +32,16 @@ export default function LedgerRow({
         {second !== undefined && (
           <td className={styles.amount}>{fmt(second)} kr.</td>
         )}
+        {third !== undefined && (
+          <td className={styles.amount}>{fmt(third)} kr.</td>
+        )}
       </tr>
       <tr className={styles.explanationRow}>
-        <td colSpan={second === undefined ? 2 : 3}>
+        <td
+          colSpan={
+            2 + (second === undefined ? 0 : 1) + (third === undefined ? 0 : 1)
+          }
+        >
           <span className={styles.explanation}>{explanation}</span>
         </td>
       </tr>

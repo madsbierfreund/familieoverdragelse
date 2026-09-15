@@ -117,8 +117,13 @@ export function explainSettlement(
     ].join(' ');
   }
 
-  const debtTotal =
-    'Ydelse før skat. Afdraget på pantebrevet giver ikke fradrag.';
+  const debtTotal = [
+    'Ydelse før skat. Afdraget på pantebrevet giver ikke fradrag.',
+    'Efter skat er anslået med samme fradragssatser som ved købet, beregnet',
+    'af datterens samlede renter og bidrag i det første år efter dødsfaldet',
+    'og fordelt på lånene efter deres andel af fradraget. Fradragsberettiget',
+    `i alt ca. ${fmt(result.totalDeductible)} kr. om året.`,
+  ].join(' ');
 
   const cashPerSibling = [
     `Farens øvrige formue på ${fmt(otherAssets)} kr. plus det kontante beløb`,

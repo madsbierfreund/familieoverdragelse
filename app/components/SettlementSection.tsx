@@ -252,7 +252,7 @@ export default function SettlementSection({
       </div>
 
       <section className={styles.section}>
-        <div className={styles.figures}>
+        <div className={`${styles.figures} ${styles.figuresQuad}`}>
           <div className={styles.figure}>
             <span className={styles.figureLabel}>Datteren skal betale boet</span>
             <span className={styles.figureValue}>
@@ -273,6 +273,12 @@ export default function SettlementSection({
             </span>
             <span className={styles.figureValue}>
               {fmt(result.totalMonthly)} kr.
+            </span>
+          </div>
+          <div className={styles.figure}>
+            <span className={styles.figureLabel}>Efter skat, anslået</span>
+            <span className={styles.figureValue}>
+              {fmt(result.totalAfterTax)} kr.
             </span>
           </div>
         </div>
@@ -327,7 +333,7 @@ export default function SettlementSection({
       {result.daughterOwes !== 0 && (
         <>
           <section className={styles.section}>
-            <table className={styles.table}>
+            <table className={`${styles.table} ${styles.tableQuad}`}>
               <caption>Datterens gæld og ydelse</caption>
               <thead>
                 <tr>
@@ -338,6 +344,9 @@ export default function SettlementSection({
                   <th scope="col" className={styles.amount}>
                     Pr. måned
                   </th>
+                  <th scope="col" className={styles.amount}>
+                    Efter skat
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -345,24 +354,28 @@ export default function SettlementSection({
                   label="Eksisterende realkreditlån, restgæld"
                   amount={result.existingBalance}
                   second={result.existingMonthly}
+                  third={result.existingAfterTax}
                   explanation={explanations.existingMortgage}
                 />
                 <LedgerRow
                   label="Nyt realkreditlån, hovedstol"
                   amount={result.newPrincipal}
                   second={result.newMonthly}
+                  third={result.newAfterTax}
                   explanation={explanations.newMortgage}
                 />
                 <LedgerRow
                   label="Pantebrev til søskende"
                   amount={result.noteAmount}
                   second={result.noteMonthly}
+                  third={result.noteAfterTax}
                   explanation={explanations.note}
                 />
                 <LedgerRow
                   label="I alt"
                   amount={result.totalDebt}
                   second={result.totalMonthly}
+                  third={result.totalAfterTax}
                   explanation={explanations.debtTotal}
                   total
                 />
