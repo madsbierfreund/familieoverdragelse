@@ -4,6 +4,7 @@ import type { LoanInput, LoanResult } from './loan';
 import { MIN_DOWN_PAYMENT_SHARE, MORTGAGE_LTV_MAX } from './loanConstants';
 
 export interface LoanExplanations {
+  ownFinancing: string;
   downPayment: string;
   mortgageCash: string;
   mortgagePrincipal: string;
@@ -23,6 +24,17 @@ export function explainLoan(
   result: LoanResult,
 ): LoanExplanations {
   const minDown = MIN_DOWN_PAYMENT_SHARE * PURCHASE_PRICE;
+  // Resten af købesummen er gældsbrevet til faren, jf. arveberegningen.
+  const promissoryNote = PURCHASE_PRICE - input.ownFinancing;
+
+  const ownFinancing =
+    promissoryNote > 0
+      ? [
+          `Den del af købesummen på ${fmt(PURCHASE_PRICE)} kr., som datteren`,
+          `selv finansierer. Resten på ${fmt(promissoryNote)} kr. lånes af`,
+          'faren via gældsbrevet.',
+        ].join(' ')
+      : `Datteren finansierer hele købesummen på ${fmt(PURCHASE_PRICE)} kr. selv.`;
 
   let downPayment = [
     'Datterens egen betaling. Långivere kræver normalt mindst',
@@ -89,6 +101,7 @@ export function explainLoan(
   ].join(' ');
 
   return {
+    ownFinancing,
     downPayment,
     mortgageCash,
     mortgagePrincipal,
