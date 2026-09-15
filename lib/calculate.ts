@@ -2,6 +2,7 @@ import {
   CHILDREN,
   MAX_FORGIVEN,
   PURCHASE_PRICE,
+  SIBLINGS,
 } from './constants';
 
 export interface CalculationInput {
@@ -20,7 +21,7 @@ export interface Scenario {
   daughterPaidOut: number;
   /** Datterens samlede værdi (forskud + arv). */
   daughterTotal: number;
-  /** Hvad hver af de tre søskende modtager. */
+  /** Hvad hver af søskendene modtager. */
   siblingEach: number;
 }
 
@@ -54,7 +55,7 @@ export interface CalculationResult {
 }
 
 /**
- * Beregner arvefordelingen mellem datteren og de tre søskende.
+ * Beregner arvefordelingen mellem datteren og hendes søskende.
  * Ren funktion uden afhængigheder til UI.
  */
 export function calculate(input: CalculationInput): CalculationResult {
@@ -71,7 +72,7 @@ export function calculate(input: CalculationInput): CalculationResult {
   const estateMass = estateAssets + advance;
   const share = estateMass / CHILDREN;
 
-  const equalityAssets = Math.max(0, 3 * advance - remainingDebt);
+  const equalityAssets = Math.max(0, SIBLINGS * advance - remainingDebt);
 
   const advanceCovered = advance <= share;
   const excess = advanceCovered ? 0 : advance - share;
@@ -95,7 +96,7 @@ export function calculate(input: CalculationInput): CalculationResult {
       daughterPays: remainingDebt,
       daughterPaidOut: 0,
       daughterTotal: advance,
-      siblingEach: estateAssets / 3,
+      siblingEach: estateAssets / SIBLINGS,
     };
     withAgreement = {
       daughterPays: remainingDebt + excess,

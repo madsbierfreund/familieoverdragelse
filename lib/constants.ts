@@ -25,4 +25,7 @@ export const GIFT_YEARS = 5;
 export const MAX_FORGIVEN = ANNUAL_GIFT_ALLOWANCE * GIFT_YEARS;
 
 /** Antal børn (arvinger). */
-export const CHILDREN = 4;
+export const CHILDREN = 5;
+
+/** Datterens søskende, altså alle børn på nær hende selv. */
+export const SIBLINGS = CHILDREN - 1;

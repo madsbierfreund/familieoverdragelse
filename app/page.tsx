@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { calculate, type CalculationInput } from '@/lib/calculate';
 import { PUBLIC_VALUATION, PURCHASE_PRICE } from '@/lib/constants';
-import { explain } from '@/lib/explanations';
+import { explain, INTRO } from '@/lib/explanations';
 import { fmt } from '@/lib/format';
 import styles from './page.module.css';
 
@@ -135,10 +135,7 @@ export default function Page() {
   return (
     <main className={styles.main}>
       <h1 className={styles.heading}>Familieoverdragelse af anpart A</h1>
-      <p className={styles.intro}>
-        Fordeling mellem datteren og tre søskende ved salg efter 20%-reglen og
-        efterfølgende arv.
-      </p>
+      <p className={styles.intro}>{INTRO}</p>
 
       <div className={styles.inputs}>
         {FIELDS.map((field) => {

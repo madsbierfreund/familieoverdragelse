@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { calculate } from './calculate';
-import { MAX_FORGIVEN, PURCHASE_PRICE } from './constants';
+import { MAX_FORGIVEN, PURCHASE_PRICE, SIBLINGS } from './constants';
 
 describe('constants', () => {
   it('udleder købesummen efter 20%-reglen', () => {
@@ -13,23 +13,23 @@ describe('calculate', () => {
   it('dækker forskuddet når den øvrige formue er stor', () => {
     const r = calculate({
       marketValue: 12_000_000,
-      otherAssets: 20_000_000,
+      otherAssets: 25_000_000,
       ownFinancing: 4_000_000,
     });
 
     expect(r.advance).toBe(5_702_600);
-    expect(r.estateMass).toBe(28_000_000);
-    expect(r.share).toBe(7_000_000);
+    expect(r.estateMass).toBe(33_000_000);
+    expect(r.share).toBe(6_600_000);
     expect(r.advanceCovered).toBe(true);
-    expect(r.withoutAgreement.daughterPays).toBe(1_000_000);
-    expect(r.withoutAgreement.siblingEach).toBe(7_000_000);
+    expect(r.withoutAgreement.daughterPays).toBe(1_400_000);
+    expect(r.withoutAgreement.siblingEach).toBe(6_600_000);
     expect(r.withAgreement).toEqual(r.withoutAgreement);
   });
 
   it('rammer grænsen hvor forskuddet præcis svarer til arvelodden', () => {
     const r = calculate({
       marketValue: 12_000_000,
-      otherAssets: 14_810_400,
+      otherAssets: 20_513_000,
       ownFinancing: 4_000_000,
     });
 
@@ -37,7 +37,7 @@ describe('calculate', () => {
     expect(r.advance).toBe(r.share);
     expect(r.advanceCovered).toBe(true);
     expect(r.withoutAgreement.daughterPays).toBe(2_297_400);
-    expect(r.equalityAssets).toBe(14_810_400);
+    expect(r.equalityAssets).toBe(20_513_000);
   });
 
   it('beregner overskydende forskud i begge scenarier', () => {
@@ -47,18 +47,19 @@ describe('calculate', () => {
       ownFinancing: 4_000_000,
     });
 
-    expect(r.share).toBe(2_500_000);
+    expect(r.estateMass).toBe(10_000_000);
+    expect(r.share).toBe(2_000_000);
     expect(r.advanceCovered).toBe(false);
-    expect(r.excess).toBe(3_202_600);
+    expect(r.excess).toBe(3_702_600);
 
     expect(r.withoutAgreement.daughterPays).toBe(2_297_400);
-    expect(r.withoutAgreement.siblingEach).toBeCloseTo(1_432_466.67, 2);
+    expect(r.withoutAgreement.siblingEach).toBe(1_074_350);
     expect(r.withoutAgreement.daughterTotal).toBe(5_702_600);
     expect(r.withoutAgreement.daughterPaidOut).toBe(0);
 
-    expect(r.withAgreement.daughterPays).toBe(5_500_000);
-    expect(r.withAgreement.siblingEach).toBe(2_500_000);
-    expect(r.withAgreement.daughterTotal).toBe(2_500_000);
+    expect(r.withAgreement.daughterPays).toBe(6_000_000);
+    expect(r.withAgreement.siblingEach).toBe(2_000_000);
+    expect(r.withAgreement.daughterTotal).toBe(2_000_000);
     expect(r.withAgreement.daughterPaidOut).toBe(0);
   });
 
@@ -103,7 +104,7 @@ describe('calculate', () => {
       for (const scenario of [r.withoutAgreement, r.withAgreement]) {
         expect(
           input.otherAssets + scenario.daughterPays - scenario.daughterPaidOut,
-        ).toBeCloseTo(3 * scenario.siblingEach, 6);
+        ).toBeCloseTo(SIBLINGS * scenario.siblingEach, 6);
       }
     }
   });

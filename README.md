@@ -1,14 +1,14 @@
 # Familieoverdragelse – arvefordeling
 
 A small Danish-language calculator for a family transfer (*familieoverdragelse*)
-of a property share and the resulting inheritance split between four siblings.
+of a property share and the resulting inheritance split between five children.
 
 A daughter buys a 50/100 share of a property from her father at 80% of the 2020
 public valuation (the Danish "20% rule"). The unpaid part of the price becomes a
 promissory note, of which five annual tax-free gifts are forgiven. The
 difference between market value and purchase price, plus the forgiven debt,
 counts as an advance on her inheritance. The app shows how the estate is then
-divided between her and her three siblings — both without and with an
+divided between her and her four siblings — both without and with an
 equalization agreement (*udligningsaftale*).
 
 Everything runs client-side: no backend, no database, no API routes.

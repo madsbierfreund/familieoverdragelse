@@ -8,6 +8,7 @@ import {
   PUBLIC_VALUATION,
   PURCHASE_PRICE,
   SHARE_FRACTION,
+  SIBLINGS,
 } from './constants';
 import { fmt } from './format';
 
@@ -37,9 +38,14 @@ const NUMBER_WORDS = [
 ];
 
 /** Skriver små tal med bogstaver, så teksterne læser som almindeligt dansk. */
-function word(value: number): string {
+export function numberWord(value: number): string {
   return NUMBER_WORDS[value] ?? String(value);
 }
+
+/** Indledningen på siden. */
+export const INTRO = `Fordeling mellem datteren og ${numberWord(
+  SIBLINGS,
+)} søskende ved salg efter 20%-reglen og efterfølgende arv.`;
 
 /** Formaterer en brøkdel som procent, fx 0.8 til "80%". */
 function pct(fraction: number): string {
@@ -55,7 +61,6 @@ export function explain(
   result: CalculationResult,
 ): Explanations {
   const { marketValue, otherAssets, ownFinancing } = input;
-  const siblings = CHILDREN - 1;
 
   const purchasePrice = [
     `Anpart A's andel af 2020-vurderingen er ${pct(SHARE_FRACTION)} ×`,
@@ -96,7 +101,7 @@ export function explain(
   } else {
     forgiven = [
       `${allowance}.`,
-      `Beregningen antager ${word(GIFT_YEARS)} års eftergivelser.`,
+      `Beregningen antager ${numberWord(GIFT_YEARS)} års eftergivelser.`,
       gift,
     ].join(' ');
   }
@@ -137,18 +142,18 @@ export function explain(
     remainingDebt,
     estateAssets,
     estateMass,
-    status: explainStatus(result, siblings),
+    status: explainStatus(result),
   };
 }
 
-function explainStatus(result: CalculationResult, siblings: number): string {
+function explainStatus(result: CalculationResult): string {
   if (!result.advanceCovered) {
     return [
       `Datterens forskud på ${fmt(result.advance)} kr. overstiger hendes`,
       `arvelod med ${fmt(result.excess)} kr. Uden udligningsaftale får hun`,
       `ikke mere arv, men skal betale restgælden på`,
       `${fmt(result.remainingDebt)} kr., og søskendene deler boets aktiver:`,
-      `${fmt(result.estateAssets)} ÷ ${siblings} =`,
+      `${fmt(result.estateAssets)} ÷ ${SIBLINGS} =`,
       `${fmt(result.withoutAgreement.siblingEach)} kr. hver.`,
       `Med udligningsaftale betaler hun desuden ${fmt(result.excess)} kr.`,
       `til boet, så hver søskende får ${fmt(result.share)} kr.`,
