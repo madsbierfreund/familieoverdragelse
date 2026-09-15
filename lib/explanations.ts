@@ -10,7 +10,7 @@ import {
   SHARE_FRACTION,
   SIBLINGS,
 } from './constants';
-import { fmt } from './format';
+import { fmt, pct } from './format';
 
 export interface Explanations {
   purchasePrice: string;
@@ -46,11 +46,6 @@ export function numberWord(value: number): string {
 export const INTRO = `Fordeling mellem datteren og ${numberWord(
   SIBLINGS,
 )} søskende ved salg efter 20%-reglen og efterfølgende arv.`;
-
-/** Formaterer en brøkdel som procent, fx 0.8 til "80%". */
-function pct(fraction: number): string {
-  return `${fraction * 100}%`;
-}
 
 /**
  * Bygger de forklarende tekster til mellemregningen og statuslinjen.
