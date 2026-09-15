@@ -10,7 +10,8 @@ difference between market value and purchase price, plus the forgiven debt,
 counts as an advance on her inheritance. The app shows how the estate is then
 divided between her and her four siblings — both without and with an
 equalization agreement (*udligningsaftale*) — and how her own payment can be
-financed with a cash down payment and a mortgage loan.
+financed with a cash down payment and a mortgage loan, and what the
+settlement at the father's death looks like under the equalization agreement.
 
 Everything runs client-side: no backend, no database, no API routes.
 
@@ -33,9 +34,16 @@ Everything runs client-side: no backend, no database, no API routes.
 - `lib/loan.test.ts` — unit tests for the loan calculation
 - `lib/loanExplanations.ts` — `explainLoan(input, result)`, its Danish texts
 - `lib/loanExplanations.test.ts` — unit tests for those texts
+- `lib/settlementConstants.ts` — defaults for the promissory note
+- `lib/settlement.ts` — `calculateSettlement(input)`, the settlement at death
+- `lib/settlement.test.ts` — unit tests for the settlement
+- `lib/settlementExplanations.ts` — `explainSettlement(input, result)`, its texts
+- `lib/settlementExplanations.test.ts` — unit tests for those texts
+- `lib/settlementFixtures.ts` — shared test setup for the settlement
 - `app/page.tsx` — the shell: the state the two calculators share
 - `app/components/InheritanceSection.tsx` — the inheritance calculator UI
 - `app/components/LoanSection.tsx` — the financing calculator UI
+- `app/components/SettlementSection.tsx` — the settlement calculator UI
 - `app/components/LedgerRow.tsx` — a table row with its explanation
 - `app/layout.tsx` — document shell, fonts and metadata
 

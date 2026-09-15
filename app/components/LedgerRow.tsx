@@ -5,12 +5,15 @@ import styles from '../page.module.css';
 export default function LedgerRow({
   label,
   amount,
+  second,
   explanation,
   total = false,
   negative = false,
 }: {
   label: string;
   amount: number;
+  /** Et beløb mere i en egen kolonne, fx en månedlig ydelse. */
+  second?: number;
   explanation: string;
   total?: boolean;
   negative?: boolean;
@@ -23,9 +26,12 @@ export default function LedgerRow({
           {negative ? '−' : ''}
           {fmt(amount)} kr.
         </td>
+        {second !== undefined && (
+          <td className={styles.amount}>{fmt(second)} kr.</td>
+        )}
       </tr>
       <tr className={styles.explanationRow}>
-        <td colSpan={2}>
+        <td colSpan={second === undefined ? 2 : 3}>
           <span className={styles.explanation}>{explanation}</span>
         </td>
       </tr>

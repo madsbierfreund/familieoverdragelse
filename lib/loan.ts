@@ -86,6 +86,25 @@ export function annuity(
 }
 
 /**
+ * Restgælden efter et antal ydelser, måned for måned på den faldende restgæld.
+ * Er lånet betalt ud, er restgælden 0.
+ */
+export function balanceAfter(
+  principal: number,
+  annualRate: number,
+  payment: number,
+  months: number,
+): number {
+  const rate = annualRate / 12;
+
+  let balance = principal;
+  for (let month = 0; month < months; month++) {
+    balance -= payment - balance * rate;
+  }
+  return Math.max(0, balance);
+}
+
+/**
  * Renterne i de første tolv ydelser, måned for måned på den faldende restgæld.
  */
 function firstYearInterestOf(

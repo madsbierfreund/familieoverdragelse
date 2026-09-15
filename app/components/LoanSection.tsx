@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PURCHASE_PRICE } from '@/lib/constants';
 import { decimal, fmt } from '@/lib/format';
 import { calculateLoan, type LendingBasis, type LoanInput } from '@/lib/loan';
@@ -22,7 +22,7 @@ import LedgerRow from './LedgerRow';
 type LoanSettings = Omit<LoanInput, 'marketValue' | 'ownFinancing'>;
 type LoanFieldName = keyof Omit<LoanSettings, 'lendingBasis'>;
 
-const LOAN_DEFAULTS: LoanSettings = {
+export const LOAN_DEFAULTS: LoanSettings = {
   lendingBasis: 'market',
   downPayment: MIN_DOWN_PAYMENT_SHARE * PURCHASE_PRICE,
   mortgageRate: DEFAULT_MORTGAGE_RATE,
@@ -144,9 +144,12 @@ function loanErrorsFor(
 export default function LoanSection({
   marketValue,
   ownFinancing,
+  onInput,
 }: {
   marketValue: number;
   ownFinancing: number;
+  /** Melder det senest gyldige sæt værdier op, så udligningen kan bruge det. */
+  onInput: (input: LoanInput) => void;
 }) {
   // `input` holder det senest gyldige sæt værdier, så resultaterne bliver
   // stående, mens man taster et ugyldigt tal. `raw` og `lendingBasis` er det,
@@ -171,6 +174,10 @@ export default function LoanSection({
   if (errors.length === 0 && candidate !== null && !sameInput(candidate, input)) {
     setInput(candidate);
   }
+
+  useEffect(() => {
+    onInput(input);
+  }, [input, onInput]);
 
   const result = useMemo(() => calculateLoan(input), [input]);
   const explanations = useMemo(
