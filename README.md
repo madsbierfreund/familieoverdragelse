@@ -9,7 +9,8 @@ promissory note, of which five annual tax-free gifts are forgiven. The
 difference between market value and purchase price, plus the forgiven debt,
 counts as an advance on her inheritance. The app shows how the estate is then
 divided between her and her four siblings — both without and with an
-equalization agreement (*udligningsaftale*).
+equalization agreement (*udligningsaftale*) — and how her own payment can be
+financed with a cash down payment, a mortgage loan and a bank loan.
 
 Everything runs client-side: no backend, no database, no API routes.
 
@@ -26,8 +27,16 @@ Everything runs client-side: no backend, no database, no API routes.
 - `lib/calculate.test.ts` — unit tests for the calculation
 - `lib/explanations.ts` — `explain(input, result)`, the Danish explanatory texts
 - `lib/explanations.test.ts` — unit tests for the texts
-- `lib/format.ts` — the shared da-DK amount formatter
-- `app/page.tsx` — the calculator UI
+- `lib/format.ts` — the shared da-DK amount and percentage formatters
+- `lib/loanConstants.ts` — defaults and limits for the financing
+- `lib/loan.ts` — `calculateLoan(input)`, the financing of the own payment
+- `lib/loan.test.ts` — unit tests for the loan calculation
+- `lib/loanExplanations.ts` — `explainLoan(input, result)`, its Danish texts
+- `lib/loanExplanations.test.ts` — unit tests for those texts
+- `app/page.tsx` — the shell: the state the two calculators share
+- `app/components/InheritanceSection.tsx` — the inheritance calculator UI
+- `app/components/LoanSection.tsx` — the financing calculator UI
+- `app/components/LedgerRow.tsx` — a table row with its explanation
 - `app/layout.tsx` — document shell, fonts and metadata
 
 The calculation is deliberately kept separate from the UI, so new inputs or
