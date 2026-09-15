@@ -32,7 +32,11 @@ Everything runs client-side: no backend, no database, no API routes.
 - `lib/loan.ts` — `calculateLoan(input)`, the financing of the own payment
 - `lib/loan.test.ts` — unit tests for the loan calculation
 - `lib/loanExplanations.ts` — `explainLoan(input, result)`, its Danish texts
-- `app/page.tsx` — the calculator UI
+- `lib/loanExplanations.test.ts` — unit tests for those texts
+- `app/page.tsx` — the shell: the state the two calculators share
+- `app/components/InheritanceSection.tsx` — the inheritance calculator UI
+- `app/components/LoanSection.tsx` — the financing calculator UI
+- `app/components/LedgerRow.tsx` — a table row with its explanation
 - `app/layout.tsx` — document shell, fonts and metadata
 
 The calculation is deliberately kept separate from the UI, so new inputs or
