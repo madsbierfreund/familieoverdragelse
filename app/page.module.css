@@ -139,10 +139,6 @@
   overflow: hidden;
 }
 
-.figuresPair {
-  grid-template-columns: repeat(2, 1fr);
-}
-
 .figure {
   background: var(--panel);
   padding: 16px 18px;
@@ -297,10 +293,6 @@
   }
 
   .fieldWide {
-    grid-template-columns: 1fr;
-  }
-
-  .figuresPair {
     grid-template-columns: 1fr;
   }
 }

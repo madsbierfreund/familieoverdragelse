@@ -7,17 +7,22 @@ export default function LedgerRow({
   amount,
   explanation,
   total = false,
+  negative = false,
 }: {
   label: string;
   amount: number;
   explanation: string;
   total?: boolean;
+  negative?: boolean;
 }) {
   return (
     <>
       <tr className={`${styles.rowMain}${total ? ` ${styles.total}` : ''}`}>
         <th scope="row">{label}</th>
-        <td className={styles.amount}>{fmt(amount)} kr.</td>
+        <td className={styles.amount}>
+          {negative ? '−' : ''}
+          {fmt(amount)} kr.
+        </td>
       </tr>
       <tr className={styles.explanationRow}>
         <td colSpan={2}>

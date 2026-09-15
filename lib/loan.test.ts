@@ -8,6 +8,7 @@ import {
   DEFAULT_MORTGAGE_YEARS,
   MIN_DOWN_PAYMENT_SHARE,
   MORTGAGE_LTV_MAX,
+  TAX_DEDUCTION_RATE_LOW,
 } from './loanConstants';
 
 const BASE: LoanInput = {
@@ -96,6 +97,47 @@ describe('calculateLoan', () => {
     expect(r.totalMonthly).toBe(r.mortgageMonthly);
   });
 
+  it('anslår fradraget og ydelsen efter skat', () => {
+    const r = calculateLoan(BASE);
+
+    expect(r.firstYearInterest).toBeGreaterThan(150_000);
+    expect(r.firstYearInterest).toBeLessThan(151_300);
+    expect(r.firstYearContribution).toBeCloseTo(21_316.72, 2);
+    expect(r.deductible).toBeCloseTo(
+      r.firstYearInterest + r.firstYearContribution,
+      6,
+    );
+    expect(r.taxSavingYear).toBeGreaterThan(46_800);
+    expect(r.taxSavingYear).toBeLessThan(47_200);
+    expect(r.taxSavingMonthly).toBeCloseTo(r.taxSavingYear / 12, 6);
+    expect(r.monthlyAfterTax).toBeGreaterThan(15_800);
+    expect(r.monthlyAfterTax).toBeLessThan(15_900);
+  });
+
+  it('bruger den lave sats, når fradraget er under grænsen', () => {
+    // Et lille lån holder renter og bidrag under de 50.000 kr.
+    const r = calculateLoan({
+      ...BASE,
+      ownFinancing: 500_000,
+      downPayment: 100_000,
+    });
+
+    expect(r.deductible).toBeLessThan(50_000);
+    expect(r.taxSavingYear).toBeCloseTo(r.deductible * TAX_DEDUCTION_RATE_LOW, 6);
+  });
+
+  it('giver intet fradrag uden lån', () => {
+    const r = calculateLoan({ ...BASE, downPayment: BASE.ownFinancing });
+
+    expect(r.mortgagePrincipal).toBe(0);
+    expect(r.firstYearInterest).toBe(0);
+    expect(r.firstYearContribution).toBe(0);
+    expect(r.deductible).toBe(0);
+    expect(r.taxSavingYear).toBe(0);
+    expect(r.taxSavingMonthly).toBe(0);
+    expect(r.monthlyAfterTax).toBe(0);
+  });
+
   it('fordeler hele egenfinansieringen for tilfældige gyldige input', () => {
     let seed = 6_700_400;
     const random = () => {
@@ -130,6 +172,21 @@ describe('calculateLoan', () => {
 
       expect(input.downPayment + r.mortgageCash).toBe(input.ownFinancing);
       expect(r.mortgageCash).toBeLessThanOrEqual(r.maxMortgageCash);
+
+      // Ydelserne i det første år er renter plus afdrag. Restgælden efter
+      // tolv ydelser tages fra annuitetsformlen, uafhængigt af summen ovenfor.
+      const rate = input.mortgageRate / 12;
+      const growth = Math.pow(1 + rate, 12);
+      const balance =
+        r.mortgagePrincipal * growth -
+        (r.mortgagePayment * (growth - 1)) / rate;
+      const repaid = r.mortgagePrincipal - balance;
+      expect(
+        Math.abs(r.firstYearInterest + repaid - 12 * r.mortgagePayment),
+      ).toBeLessThan(1);
+      if (r.mortgagePrincipal > 0) {
+        expect(r.monthlyAfterTax).toBeLessThan(r.totalMonthly);
+      }
     }
   });
 });

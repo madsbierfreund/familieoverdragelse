@@ -40,6 +40,14 @@ describe('explainLoan', () => {
     expect(t.lendingBasis).toContain('højst 5.360.320 kr.');
   });
 
+  it('forklarer det anslåede skattefradrag', () => {
+    const t = texts(BASE);
+
+    expect(t.taxSaving).toContain('første 50.000 kr.');
+    expect(t.taxSaving).toContain('33%');
+    expect(t.taxSaving).toContain('25%');
+  });
+
   it('forklarer egenfinansieringen, når hele købesummen betales selv', () => {
     expect(texts({ ...BASE, ownFinancing: PURCHASE_PRICE }).ownFinancing).toBe(
       'Datteren finansierer hele købesummen på 6.700.400 kr. selv.',

@@ -1,7 +1,13 @@
 import { PURCHASE_PRICE } from './constants';
 import { decimal, fmt, pct, ratePct } from './format';
 import type { LoanInput, LoanResult } from './loan';
-import { MIN_DOWN_PAYMENT_SHARE, MORTGAGE_LTV_MAX } from './loanConstants';
+import {
+  MIN_DOWN_PAYMENT_SHARE,
+  MORTGAGE_LTV_MAX,
+  TAX_DEDUCTION_RATE_HIGH,
+  TAX_DEDUCTION_RATE_LOW,
+  TAX_DEDUCTION_THRESHOLD,
+} from './loanConstants';
 
 export interface LoanExplanations {
   lendingBasis: string;
@@ -12,6 +18,8 @@ export interface LoanExplanations {
   mortgagePayment: string;
   mortgageContribution: string;
   total: string;
+  taxSaving: string;
+  afterTax: string;
   footnote: string;
 }
 
@@ -90,8 +98,23 @@ export function explainLoan(
   ].join(' ');
 
   const total = [
-    'Ydelse før skat i det første år. Rentefradrag, ejendomsskat og',
-    'fællesudgifter efter samejeoverenskomsten er ikke medregnet.',
+    'Ydelse før skat i det første år. Ejendomsskat og fællesudgifter efter',
+    'samejeoverenskomsten er ikke medregnet.',
+  ].join(' ');
+
+  const taxSaving = [
+    'Renter og bidrag er fradragsberettigede, afdraget er ikke.',
+    `Første år er det ca. ${fmt(result.deductible)} kr.`,
+    `Fradraget er anslået til ca. ${pct(TAX_DEDUCTION_RATE_LOW)} af de første`,
+    `${fmt(TAX_DEDUCTION_THRESHOLD)} kr. og ca. ${pct(TAX_DEDUCTION_RATE_HIGH)}`,
+    `af resten, i alt ca. ${fmt(result.taxSavingYear)} kr. om året.`,
+    'Den præcise værdi afhænger af kommuneskat og kirkeskat.',
+  ].join(' ');
+
+  const afterTax = [
+    'Beregningen forudsætter, at datteren er enlig og ikke har anden negativ',
+    'kapitalindkomst. Er hun gift, kan en uudnyttet grænse hos ægtefællen give',
+    'et større fradrag.',
   ].join(' ');
 
   const footnote = [
@@ -108,6 +131,8 @@ export function explainLoan(
     mortgagePayment,
     mortgageContribution,
     total,
+    taxSaving,
+    afterTax,
     footnote,
   };
 }

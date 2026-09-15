@@ -295,7 +295,7 @@ export default function LoanSection({
       </div>
 
       <section className={styles.section}>
-        <div className={`${styles.figures} ${styles.figuresPair}`}>
+        <div className={styles.figures}>
           <div className={styles.figure}>
             <span className={styles.figureLabel}>Realkreditlån (hovedstol)</span>
             <span className={styles.figureValue}>
@@ -308,6 +308,14 @@ export default function LoanSection({
             </span>
             <span className={styles.figureValue}>
               {fmt(result.totalMonthly)} kr.
+            </span>
+          </div>
+          <div className={styles.figure}>
+            <span className={styles.figureLabel}>
+              Ydelse efter skat, anslået
+            </span>
+            <span className={styles.figureValue}>
+              {fmt(result.monthlyAfterTax)} kr.
             </span>
           </div>
         </div>
@@ -359,6 +367,18 @@ export default function LoanSection({
               label="I alt"
               amount={result.totalMonthly}
               explanation={explanations.total}
+              total
+            />
+            <LedgerRow
+              label="Skattefradrag, anslået"
+              amount={result.taxSavingMonthly}
+              explanation={explanations.taxSaving}
+              negative
+            />
+            <LedgerRow
+              label="Ydelse efter skat, anslået"
+              amount={result.monthlyAfterTax}
+              explanation={explanations.afterTax}
               total
             />
           </tbody>

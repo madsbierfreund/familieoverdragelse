@@ -21,6 +21,15 @@ export const DEFAULT_BOND_PRICE = 98;
 /** Løbetid på realkreditlånet i år. */
 export const DEFAULT_MORTGAGE_YEARS = 30;
 
+/** Årlig negativ nettokapitalindkomst med den høje fradragsværdi, enlig. */
+export const TAX_DEDUCTION_THRESHOLD = 50_000;
+
+/** Fradragsværdi op til grænsen. */
+export const TAX_DEDUCTION_RATE_LOW = 0.33;
+
+/** Fradragsværdi over grænsen. */
+export const TAX_DEDUCTION_RATE_HIGH = 0.25;
+
 /** Tilladt kursinterval. */
 export const MIN_BOND_PRICE = 50;
 export const MAX_BOND_PRICE = 105;

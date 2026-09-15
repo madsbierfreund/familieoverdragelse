@@ -1,5 +1,11 @@
 import { PURCHASE_PRICE } from './constants';
-import { MIN_DOWN_PAYMENT_SHARE, MORTGAGE_LTV_MAX } from './loanConstants';
+import {
+  MIN_DOWN_PAYMENT_SHARE,
+  MORTGAGE_LTV_MAX,
+  TAX_DEDUCTION_RATE_HIGH,
+  TAX_DEDUCTION_RATE_LOW,
+  TAX_DEDUCTION_THRESHOLD,
+} from './loanConstants';
 
 /** Grundlaget for belåningen: markedsværdien eller købesummen. */
 export type LendingBasis = 'market' | 'purchase';
@@ -45,6 +51,18 @@ export interface LoanResult {
   mortgageMonthly: number;
   /** Samlet månedlig ydelse. */
   totalMonthly: number;
+  /** Renter af realkreditlånet i det første år. */
+  firstYearInterest: number;
+  /** Bidrag i det første år. */
+  firstYearContribution: number;
+  /** Fradragsberettiget beløb i det første år. */
+  deductible: number;
+  /** Anslået skatteværdi af fradraget pr. år. */
+  taxSavingYear: number;
+  /** Anslået skatteværdi af fradraget pr. måned. */
+  taxSavingMonthly: number;
+  /** Månedlig ydelse efter skat. */
+  monthlyAfterTax: number;
   /** Samlet gæld. */
   totalDebt: number;
 }
@@ -65,6 +83,28 @@ export function annuity(
 
   if (rate === 0) return principal / months;
   return (principal * rate) / (1 - Math.pow(1 + rate, -months));
+}
+
+/**
+ * Renterne i de første tolv ydelser, måned for måned på den faldende restgæld.
+ */
+function firstYearInterestOf(
+  principal: number,
+  annualRate: number,
+  years: number,
+  payment: number,
+): number {
+  const rate = annualRate / 12;
+  const months = Math.min(12, years * 12);
+
+  let balance = principal;
+  let interest = 0;
+  for (let month = 0; month < months; month++) {
+    const monthInterest = balance * rate;
+    interest += monthInterest;
+    balance -= payment - monthInterest;
+  }
+  return interest;
 }
 
 /**
@@ -109,6 +149,20 @@ export function calculateLoan(input: LoanInput): LoanResult {
   const mortgageContribution = (mortgagePrincipal * contributionRate) / 12;
   const mortgageMonthly = mortgagePayment + mortgageContribution;
 
+  // Renter og bidrag er fradragsberettigede, afdraget er ikke.
+  const firstYearInterest = firstYearInterestOf(
+    mortgagePrincipal,
+    mortgageRate,
+    mortgageYears,
+    mortgagePayment,
+  );
+  const firstYearContribution = mortgageContribution * 12;
+  const deductible = firstYearInterest + firstYearContribution;
+  const taxSavingYear =
+    Math.min(deductible, TAX_DEDUCTION_THRESHOLD) * TAX_DEDUCTION_RATE_LOW +
+    Math.max(0, deductible - TAX_DEDUCTION_THRESHOLD) * TAX_DEDUCTION_RATE_HIGH;
+  const taxSavingMonthly = taxSavingYear / 12;
+
   return {
     basis,
     maxMortgageCash,
@@ -121,6 +175,12 @@ export function calculateLoan(input: LoanInput): LoanResult {
     mortgageContribution,
     mortgageMonthly,
     totalMonthly: mortgageMonthly,
+    firstYearInterest,
+    firstYearContribution,
+    deductible,
+    taxSavingYear,
+    taxSavingMonthly,
+    monthlyAfterTax: mortgageMonthly - taxSavingMonthly,
     totalDebt: mortgagePrincipal,
   };
 }
