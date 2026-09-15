@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SIBLINGS } from './constants';
+import { GIFT_YEARS, SIBLINGS } from './constants';
+import { INTEREST_ONLY_YEARS, LOAN_TYPES } from './loanConstants';
 import { calculateSettlement } from './settlement';
 import { explainSettlement } from './settlementExplanations';
 import { settlementInput } from './testFixtures';
@@ -72,15 +73,27 @@ describe('explainSettlement', () => {
 
   it('nævner afdragsfriheden kun ved den afdragsfri lånetype', () => {
     const interestOnly = texts(DEFAULTS, { loanType: 'fixedInterestOnly' });
-    expect(interestOnly.existingMortgage).toContain(
-      'Lånet er stadig afdragsfrit, så restgælden er den samme som ved købet.',
+
+    // Et afdragsfrit lån har hverken afdraget eller en uændret ydelse at nævne.
+    expect(interestOnly.existingMortgage).toBe(
+      `Restgælden efter ${GIFT_YEARS} år. Lånet er stadig afdragsfrit, så ` +
+        'restgælden og ydelsen er de samme som ved købet.',
+    );
+    expect(interestOnly.existingMortgage).not.toContain('års afdrag');
+    expect(interestOnly.existingMortgage).not.toContain(
+      'Ydelsen er uændret, men',
     );
     expect(interestOnly.newMortgage).toContain(
-      'Det nye lån får sin egen afdragsfri periode på 10 år fra dødsfaldet.',
+      `Lånet får sin egen afdragsfri periode på ${INTEREST_ONLY_YEARS} år ` +
+        'fra dødsfaldet.',
     );
 
     for (const loanType of ['fixed', 'flex'] as const) {
       const t = texts(DEFAULTS, { loanType });
+      expect(t.existingMortgage).toBe(
+        `Restgælden efter ${GIFT_YEARS} års afdrag. Ydelsen er uændret, men ` +
+          'bidraget beregnes nu af restgælden.',
+      );
       expect(t.existingMortgage).not.toContain('afdragsfrit');
       expect(t.newMortgage).not.toContain('afdragsfri periode');
     }
@@ -95,7 +108,7 @@ describe('explainSettlement', () => {
     // Lånet fra købet er afdragsfrit, det nye er et flexlån med afdrag.
     expect(t.existingMortgage).toContain('Lånet er stadig afdragsfrit');
     expect(t.newMortgage).toBe(
-      'Lånet optages som flexlån (F5) med afdrag med samme løbetid som det ' +
+      `Låntype: ${LOAN_TYPES.flex.label}. Samme løbetid som det ` +
         'eksisterende lån.',
     );
     expect(t.newMortgage).not.toContain('afdragsfri periode');
@@ -106,7 +119,10 @@ describe('explainSettlement', () => {
     });
     expect(other.existingMortgage).not.toContain('afdragsfrit');
     expect(other.newMortgage).toContain(
-      'Det nye lån får sin egen afdragsfri periode på 10 år fra dødsfaldet.',
+      `Låntype: ${LOAN_TYPES.fixedInterestOnly.label}.`,
+    );
+    expect(other.newMortgage).toContain(
+      `afdragsfri periode på ${INTEREST_ONLY_YEARS} år`,
     );
   });
 

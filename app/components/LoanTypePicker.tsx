@@ -7,6 +7,9 @@ import {
 import { LOAN_TYPE_EXPLANATIONS } from '@/lib/loanExplanations';
 import styles from '../page.module.css';
 
+/** Ankeret, finansieringsafsnittet linker til. */
+export const LOAN_TYPES_ANCHOR = 'laantyper';
+
 /** Valg af lånetype for ét af de to lån. */
 export default function LoanTypePicker({
   name,

@@ -15,9 +15,10 @@ import {
   MIN_DOWN_PAYMENT_SHARE,
   MIN_YEARS,
 } from '@/lib/loanConstants';
-import { explainLoan } from '@/lib/loanExplanations';
+import { explainLoan, loanTypeLine } from '@/lib/loanExplanations';
 import styles from '../page.module.css';
 import LedgerRow from './LedgerRow';
+import { LOAN_TYPES_ANCHOR } from './LoanTypePicker';
 
 type LoanSettings = Omit<
   LoanInput,
@@ -191,6 +192,8 @@ export default function LoanSection({
     setRaw({ ...raw, ...ratesOf(loanType) });
   }
 
+  const typeLine = loanTypeLine(loanType);
+
   const errors = loanErrorsFor(
     raw,
     lendingBasis,
@@ -267,6 +270,13 @@ export default function LoanSection({
   return (
     <>
       <h2 className={styles.subheading}>Finansiering af egenfinansiering</h2>
+      <p className={`${styles.explanation} ${styles.typeLine}`}>
+        {typeLine.before}
+        <a className={styles.typeLink} href={`#${LOAN_TYPES_ANCHOR}`}>
+          {typeLine.link}
+        </a>
+        {typeLine.after}
+      </p>
 
       <div className={styles.inputs}>
         <div className={`${styles.fieldPlain} ${styles.fieldWide}`}>

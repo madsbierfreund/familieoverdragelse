@@ -79,6 +79,23 @@
 .typeField {
   display: grid;
   gap: 8px;
+  align-content: start;
+}
+
+.typeFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px 32px;
+  border-top: 1px solid var(--lines);
+  padding-top: 24px;
+}
+
+.typeLine {
+  margin: -12px 0 0;
+}
+
+.typeLink {
+  color: inherit;
 }
 
 .radioGroup {
@@ -304,6 +321,10 @@
   }
 
   .fieldWide {
+    grid-template-columns: 1fr;
+  }
+
+  .typeFields {
     grid-template-columns: 1fr;
   }
 }

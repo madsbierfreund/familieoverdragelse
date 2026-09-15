@@ -17,6 +17,7 @@ import {
 import { explainSettlement } from '@/lib/settlementExplanations';
 import styles from '../page.module.css';
 import LedgerRow from './LedgerRow';
+import LoanTypePicker, { LOAN_TYPES_ANCHOR } from './LoanTypePicker';
 
 type SettlementFieldName = 'newMortgageCash' | 'noteRate' | 'noteYears';
 
@@ -83,12 +84,19 @@ function errorsFor(
 export default function SettlementSection({
   values,
   loanInput,
+  purchaseLoanType,
   deathLoanType,
+  onPurchaseLoanTypeChange,
+  onDeathLoanTypeChange,
 }: {
   values: CalculationInput;
   loanInput: LoanInput;
+  /** Lånetypen på lånet fra købet. */
+  purchaseLoanType: LoanType;
   /** Lånetypen på det nye lån, der optages ved dødsfaldet. */
   deathLoanType: LoanType;
+  onPurchaseLoanTypeChange: (loanType: LoanType) => void;
+  onDeathLoanTypeChange: (loanType: LoanType) => void;
 }) {
   const [raw, setRaw] =
     useState<Record<SettlementFieldName, string>>(RAW_DEFAULTS);
@@ -275,30 +283,49 @@ export default function SettlementSection({
           <p className={styles.statusExplanation}>{explanations.noSettlement}</p>
         </section>
       ) : (
-        <>
-          <section className={styles.section}>
-            <table className={styles.table}>
-              <caption>Datterens finansiering</caption>
-              <tbody>
-                <LedgerRow
-                  label="Skyldigt beløb til boet"
-                  amount={result.daughterOwes}
-                  explanation={explanations.daughterOwes}
-                />
-                <LedgerRow
-                  label="Nyt realkreditlån, udbetalt"
-                  amount={result.newMortgageCash}
-                  explanation={explanations.newMortgageCash}
-                />
-                <LedgerRow
-                  label="Pantebrev til søskende"
-                  amount={result.noteAmount}
-                  explanation={explanations.noteAmount}
-                />
-              </tbody>
-            </table>
-          </section>
+        <section className={styles.section}>
+          <table className={styles.table}>
+            <caption>Datterens finansiering</caption>
+            <tbody>
+              <LedgerRow
+                label="Skyldigt beløb til boet"
+                amount={result.daughterOwes}
+                explanation={explanations.daughterOwes}
+              />
+              <LedgerRow
+                label="Nyt realkreditlån, udbetalt"
+                amount={result.newMortgageCash}
+                explanation={explanations.newMortgageCash}
+              />
+              <LedgerRow
+                label="Pantebrev til søskende"
+                amount={result.noteAmount}
+                explanation={explanations.noteAmount}
+              />
+            </tbody>
+          </table>
+        </section>
+      )}
 
+      <section className={styles.section} id={LOAN_TYPES_ANCHOR}>
+        <div className={styles.typeFields}>
+          <LoanTypePicker
+            name="purchaseLoanType"
+            label="Låntype ved købet"
+            loanType={purchaseLoanType}
+            onChange={onPurchaseLoanTypeChange}
+          />
+          <LoanTypePicker
+            name="deathLoanType"
+            label="Låntype ved dødsfaldet"
+            loanType={deathLoanType}
+            onChange={onDeathLoanTypeChange}
+          />
+        </div>
+      </section>
+
+      {result.daughterOwes !== 0 && (
+        <>
           <section className={styles.section}>
             <table className={styles.table}>
               <caption>Datterens gæld og ydelse</caption>

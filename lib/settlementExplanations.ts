@@ -74,27 +74,25 @@ export function explainSettlement(
   const deathType = LOAN_TYPES[deathLoanType];
   const stillInterestOnly = result.deathYear * 12 < purchaseInterestOnly;
 
-  let existingMortgage = [
-    `Restgælden efter ${result.deathYear} års afdrag. Ydelsen er uændret,`,
-    'men bidraget beregnes nu af restgælden.',
-  ].join(' ');
-  if (stillInterestOnly) {
-    existingMortgage +=
-      ' Lånet er stadig afdragsfrit, så restgælden er den samme som ved købet.';
-  }
+  const existingMortgage = stillInterestOnly
+    ? [
+        `Restgælden efter ${result.deathYear} år. Lånet er stadig`,
+        'afdragsfrit, så restgælden og ydelsen er de samme som ved købet.',
+      ].join(' ')
+    : [
+        `Restgælden efter ${result.deathYear} års afdrag. Ydelsen er uændret,`,
+        'men bidraget beregnes nu af restgælden.',
+      ].join(' ');
 
-  // Etiketten står midt i en sætning, så kun forbogstavet skrives småt.
-  const deathLabel =
-    deathType.label.charAt(0).toLowerCase() + deathType.label.slice(1);
   let newMortgage = [
-    `Lånet optages som ${deathLabel} med samme løbetid som det`,
-    'eksisterende lån.',
+    `Låntype: ${deathType.label}.`,
+    'Samme løbetid som det eksisterende lån.',
   ].join(' ');
   if (deathType.interestOnlyYears > 0) {
     newMortgage += [
       '',
-      `Det nye lån får sin egen afdragsfri periode på ${INTEREST_ONLY_YEARS}`,
-      'år fra dødsfaldet.',
+      `Lånet får sin egen afdragsfri periode på ${INTEREST_ONLY_YEARS} år fra`,
+      'dødsfaldet.',
     ].join(' ');
   }
 
@@ -142,8 +140,9 @@ export function explainSettlement(
 
   const footnote = [
     `Forudsætninger: dødsfald efter ${result.deathYear} år, uændret`,
-    'markedsværdi, nyt lån på samme vilkår som det eksisterende. Boafgift,',
-    'boomkostninger og låneomkostninger er ikke medregnet.',
+    'markedsværdi, nyt lån med samme løbetid som det eksisterende og vilkår',
+    'efter den valgte låntype. Boafgift, boomkostninger og låneomkostninger',
+    'er ikke medregnet.',
   ].join(' ');
 
   return {

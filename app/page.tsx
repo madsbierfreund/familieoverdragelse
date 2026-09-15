@@ -6,7 +6,6 @@ import type { LoanInput } from '@/lib/loan';
 import { DEFAULT_LOAN_TYPE, type LoanType } from '@/lib/loanConstants';
 import InheritanceSection from './components/InheritanceSection';
 import LoanSection, { LOAN_DEFAULTS } from './components/LoanSection';
-import LoanTypePicker from './components/LoanTypePicker';
 import SettlementSection from './components/SettlementSection';
 import styles from './page.module.css';
 
@@ -36,21 +35,6 @@ export default function Page() {
     <main className={styles.main}>
       <InheritanceSection values={values} onChange={setValues} />
 
-      <div className={styles.inputs}>
-        <LoanTypePicker
-          name="purchaseLoanType"
-          label="Låntype ved købet"
-          loanType={purchaseLoanType}
-          onChange={setPurchaseLoanType}
-        />
-        <LoanTypePicker
-          name="deathLoanType"
-          label="Låntype ved dødsfaldet"
-          loanType={deathLoanType}
-          onChange={setDeathLoanType}
-        />
-      </div>
-
       <LoanSection
         marketValue={values.marketValue}
         ownFinancing={values.ownFinancing}
@@ -60,7 +44,10 @@ export default function Page() {
       <SettlementSection
         values={values}
         loanInput={loanInput}
+        purchaseLoanType={purchaseLoanType}
         deathLoanType={deathLoanType}
+        onPurchaseLoanTypeChange={setPurchaseLoanType}
+        onDeathLoanTypeChange={setDeathLoanType}
       />
     </main>
   );

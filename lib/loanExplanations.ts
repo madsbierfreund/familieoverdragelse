@@ -3,6 +3,7 @@ import { decimal, fmt, pct, ratePct } from './format';
 import type { LoanInput, LoanResult } from './loan';
 import {
   INTEREST_ONLY_YEARS,
+  LOAN_TYPES,
   type LoanType,
   MIN_DOWN_PAYMENT_SHARE,
   MORTGAGE_LTV_MAX,
@@ -23,6 +24,18 @@ export interface LoanExplanations {
   taxSaving: string;
   afterTax: string;
   footnote: string;
+}
+
+/**
+ * Linjen i finansieringsafsnittet, der siger hvilken lånetype der regnes med.
+ * Delt op, så midten kan vises som et link til valget længere nede.
+ */
+export function loanTypeLine(loanType: LoanType) {
+  return {
+    before: `Låntype: ${LOAN_TYPES[loanType].label}. Vælges under `,
+    link: 'Ved farens død',
+    after: ', hvor forskellen på låntyperne ses.',
+  };
 }
 
 /** Forklaringen til hver lånetype. */
