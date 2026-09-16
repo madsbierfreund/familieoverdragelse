@@ -16,3 +16,10 @@ export const MAX_INFLATION_RATE = 0.1;
 /** Tilladt antal år fra handlen til farens død. */
 export const MIN_DEATH_YEARS = 1;
 export const MAX_DEATH_YEARS = 30;
+
+/** Årlig stigning i boligpriserne. */
+export const DEFAULT_PRICE_GROWTH = 0;
+
+/** Tilladt boligprisstigning pr. år. */
+export const MIN_PRICE_GROWTH = 0;
+export const MAX_PRICE_GROWTH = 0.1;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { calculate } from './calculate';
-import { PURCHASE_PRICE, SIBLINGS } from './constants';
+import { GIFT_YEARS, PURCHASE_PRICE, SIBLINGS } from './constants';
 import {
   LOAN_TYPES,
   type LoanType,
@@ -37,6 +37,73 @@ describe('borrowingLimit', () => {
   it('lader hele kroner stå', () => {
     expect(borrowingLimit(6_000_000)).toBe(6_000_000);
     expect(borrowingLimit(0)).toBe(0);
+  });
+});
+
+describe('calculateSettlement med stigende boligpriser', () => {
+  it('lader alle tal stå, når priserne ikke stiger', () => {
+    for (const loanType of TYPES) {
+      for (const deathLoanType of TYPES) {
+        const base = settlementInput(DEFAULTS, { loanType, deathLoanType });
+        const flat = settlementInput(DEFAULTS, {
+          loanType,
+          deathLoanType,
+          priceGrowth: 0,
+          newMortgageCash: base.newMortgageCash,
+        });
+
+        expect(calculateSettlement(flat)).toEqual(calculateSettlement(base));
+        expect(calculateSettlement(flat).marketValueAtDeath).toBe(
+          DEFAULTS.marketValue,
+        );
+      }
+    }
+  });
+
+  it('giver plads til et større lån, når anparten stiger i værdi', () => {
+    const io = calculateSettlement(
+      settlementInput(DEFAULTS, {
+        loanType: 'fixedInterestOnly',
+        priceGrowth: 0.02,
+      }),
+    );
+
+    expect(io.marketValueAtDeath).toBeCloseTo(13_248_969.64, 2);
+    expect(io.maxNewPrincipal).toBeCloseTo(6_859_400.2, 2);
+    expect(io.newMortgageCash).toBeCloseTo(6_000_000, 2);
+    expect(io.noteAmount).toBeCloseTo(0, 2);
+    expect(io.newMonthly).toBeCloseTo(25_153.06, 2);
+    // 40.517,3056 — inden for den ene øre, tallet er opgivet med.
+    expect(Math.abs(io.totalMonthly - 40_517.3)).toBeLessThan(0.01);
+    expect(io.pledgeRoom).toBeCloseTo(3_386_745.15, 2);
+
+    const fixed = calculateSettlement(
+      settlementInput(DEFAULTS, { priceGrowth: 0.02 }),
+    );
+    expect(fixed.maxNewPrincipal).toBeCloseTo(7_213_374.86, 2);
+    expect(fixed.pledgeRoom).toBeCloseTo(3_740_719.81, 2);
+    expect(fixed.totalMonthly).toBeCloseTo(51_941.97, 2);
+  });
+
+  it('rører ikke arveberegningen', () => {
+    const base = settlementInput(DEFAULTS).inheritance;
+
+    for (const priceGrowth of [0, 0.02, 0.05, 0.1]) {
+      expect(settlementInput(DEFAULTS, { priceGrowth }).inheritance).toEqual(
+        base,
+      );
+    }
+  });
+
+  it('viser anpartens værdi og friværdien i dagens kroner', () => {
+    const r = calculateSettlement(
+      settlementInput(DEFAULTS, { priceGrowth: 0.02 }),
+    );
+    const today = (amount: number) =>
+      toTodaysValue(amount, DEFAULT_INFLATION_RATE, GIFT_YEARS);
+
+    expect(today(r.marketValueAtDeath)).toBeCloseTo(11_428_678, 0);
+    expect(today(r.pledgeRoom)).toBeCloseTo(3_226_778, 0);
   });
 });
 

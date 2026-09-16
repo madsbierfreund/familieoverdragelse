@@ -90,6 +90,21 @@
   padding-top: 24px;
 }
 
+.typeFieldsThree {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+/* Tre skydere ved siden af hinanden har mindre plads til tal og værdi. */
+.typeFieldsThree .sliderRow {
+  grid-template-columns: 1fr auto 64px;
+  gap: 8px;
+}
+
+.typeFieldsThree .numberSmall {
+  width: 64px;
+}
+
 .typeLine {
   margin: -12px 0 0;
 }
@@ -363,7 +378,8 @@
     grid-template-columns: 1fr;
   }
 
-  .typeFields {
+  .typeFields,
+  .typeFieldsThree {
     grid-template-columns: 1fr;
   }
 

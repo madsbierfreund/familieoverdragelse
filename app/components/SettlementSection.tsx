@@ -17,10 +17,13 @@ import {
   DEFAULT_INFLATION_RATE,
   DEFAULT_NOTE_RATE,
   DEFAULT_NOTE_YEARS,
+  DEFAULT_PRICE_GROWTH,
   MAX_DEATH_YEARS,
   MAX_INFLATION_RATE,
+  MAX_PRICE_GROWTH,
   MIN_DEATH_YEARS,
   MIN_INFLATION_RATE,
+  MIN_PRICE_GROWTH,
 } from '@/lib/settlementConstants';
 import {
   explainSettlement,
@@ -35,7 +38,8 @@ type SettlementFieldName =
   | 'noteRate'
   | 'noteYears'
   | 'deathYears'
-  | 'inflation';
+  | 'inflation'
+  | 'priceGrowth';
 
 /** De beløb, afsnittet viser, og som kan omregnes til dagens kroner. */
 const AMOUNT_KEYS = [
@@ -56,6 +60,8 @@ const AMOUNT_KEYS = [
   'totalDebt',
   'totalMonthly',
   'totalAfterTax',
+  'marketValueAtDeath',
+  'pledgeRoom',
 ] as const satisfies readonly (keyof SettlementResult)[];
 
 /** Omregner de viste beløb. Beregningen selv rører sig ikke. */
@@ -83,12 +89,17 @@ const RAW_DEFAULTS: Record<SettlementFieldName, string> = {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   }),
+  priceGrowth: (DEFAULT_PRICE_GROWTH * 100).toLocaleString('da-DK', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }),
 };
 
 const NEGATIVE_MESSAGE = 'Indtast positive tal.';
 const NOTE_YEARS_MESSAGE = `Afdragsperioden skal være et helt antal år mellem ${MIN_YEARS} og ${MAX_YEARS}.`;
 const INFLATION_MESSAGE = `Inflation skal være mellem ${MIN_INFLATION_RATE * 100} og ${MAX_INFLATION_RATE * 100} %.`;
 const DEATH_YEARS_MESSAGE = `År til farens død skal være et helt antal mellem ${MIN_DEATH_YEARS} og ${MAX_DEATH_YEARS}.`;
+const PRICE_GROWTH_MESSAGE = `Boligprisstigning skal være mellem ${MIN_PRICE_GROWTH * 100} og ${MAX_PRICE_GROWTH * 100} %.`;
 
 /** Parser et tal med komma eller punktum som decimalseparator. */
 function parseDecimal(raw: string): number | null {
@@ -102,7 +113,9 @@ function parseDecimal(raw: string): number | null {
 function readField(name: SettlementFieldName, raw: string): number | null {
   const value = parseDecimal(raw);
   if (value === null) return null;
-  return name === 'noteRate' || name === 'inflation' ? value / 100 : value;
+  const asPercent =
+    name === 'noteRate' || name === 'inflation' || name === 'priceGrowth';
+  return asPercent ? value / 100 : value;
 }
 
 function errorsFor(
@@ -152,6 +165,14 @@ function errorsFor(
     messages.push(DEATH_YEARS_MESSAGE);
   }
 
+  const priceGrowth = readField('priceGrowth', raw.priceGrowth);
+  if (
+    priceGrowth !== null &&
+    (priceGrowth < MIN_PRICE_GROWTH || priceGrowth > MAX_PRICE_GROWTH)
+  ) {
+    messages.push(PRICE_GROWTH_MESSAGE);
+  }
+
   return messages;
 }
 
@@ -189,6 +210,7 @@ export default function SettlementSection({
   });
   // Inflationen ændrer ikke beregningen, kun hvordan beløbene vises.
   const [inflation, setInflation] = useState(DEFAULT_INFLATION_RATE);
+  const [priceGrowth, setPriceGrowth] = useState(DEFAULT_PRICE_GROWTH);
 
   const [chosenCash, setChosenCash] = useState(0);
 
@@ -201,9 +223,10 @@ export default function SettlementSection({
       loanResult,
       deathLoanType,
       deathYears,
+      priceGrowth,
       ...note,
     };
-  }, [values, loanInput, deathLoanType, deathYears, note]);
+  }, [values, loanInput, deathLoanType, deathYears, priceGrowth, note]);
 
   // Grænsen afhænger ikke af det valgte beløb, så den kan læses af en prøve.
   // Den skæres til hele kroner og bruges både til feltet, skyderen og
@@ -277,6 +300,8 @@ export default function SettlementSection({
       setInflation(readField(name, text) as number);
     } else if (name === 'deathYears') {
       onDeathYearsChange(readField(name, text) as number);
+    } else if (name === 'priceGrowth') {
+      setPriceGrowth(readField(name, text) as number);
     } else {
       setNote({
         noteRate: readField('noteRate', next.noteRate) as number,
@@ -301,6 +326,9 @@ export default function SettlementSection({
         value < MIN_DEATH_YEARS ||
         value > MAX_DEATH_YEARS
       );
+    }
+    if (name === 'priceGrowth') {
+      return value < MIN_PRICE_GROWTH || value > MAX_PRICE_GROWTH;
     }
     return false;
   };
@@ -498,7 +526,7 @@ export default function SettlementSection({
       </section>
 
       <section className={styles.section}>
-        <div className={styles.typeFields}>
+        <div className={`${styles.typeFields} ${styles.typeFieldsThree}`}>
           {sliderField('deathYears', 'År til farens død', {
             min: MIN_DEATH_YEARS,
             max: MAX_DEATH_YEARS,
@@ -513,9 +541,16 @@ export default function SettlementSection({
             value: inflation * 100,
             display: `${decimal(inflation * 100, 1, 1)} %`,
           })}
+          {sliderField('priceGrowth', 'Boligprisstigning pr. år', {
+            min: MIN_PRICE_GROWTH * 100,
+            max: MAX_PRICE_GROWTH * 100,
+            step: 0.5,
+            value: priceGrowth * 100,
+            display: `${decimal(priceGrowth * 100, 1, 1)} %`,
+          })}
         </div>
         <p className={`${styles.explanation} ${styles.sliderNote}`}>
-          {todaysValueNote(inflation, deathYears)}
+          {todaysValueNote(inflation, deathYears, priceGrowth)}
         </p>
       </section>
 
@@ -566,6 +601,21 @@ export default function SettlementSection({
                   second={result.totalMonthly}
                   third={result.totalAfterTax}
                   explanation={explanations.debtTotal}
+                  total
+                />
+                <LedgerRow
+                  label="Anpartens værdi ved dødsfaldet"
+                  amount={result.marketValueAtDeath}
+                  second={null}
+                  third={null}
+                  explanation={explanations.marketValueAtDeath}
+                />
+                <LedgerRow
+                  label="Friværdi efter udligning"
+                  amount={result.pledgeRoom}
+                  second={null}
+                  third={null}
+                  explanation={explanations.pledgeRoom}
                   total
                 />
               </tbody>

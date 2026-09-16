@@ -10,7 +10,11 @@ import {
   MIN_DOWN_PAYMENT_SHARE,
 } from './loanConstants';
 import { calculateSettlement, type SettlementInput } from './settlement';
-import { DEFAULT_NOTE_RATE, DEFAULT_NOTE_YEARS } from './settlementConstants';
+import {
+  DEFAULT_NOTE_RATE,
+  DEFAULT_NOTE_YEARS,
+  DEFAULT_PRICE_GROWTH,
+} from './settlementConstants';
 
 /**
  * Standardværdierne fra siden, med lånetypens egne satser.
@@ -38,6 +42,8 @@ export function loanInput(
 interface Overrides {
   /** År fra handlen til farens død. */
   deathYears?: number;
+  /** Årlig stigning i boligpriserne. */
+  priceGrowth?: number;
   /** Lånetypen ved købet. Sætter også lånet ved dødsfaldet, hvis intet andet. */
   loanType?: LoanType;
   /** Lånetypen ved dødsfaldet, når de to lån skal være forskellige. */
@@ -71,6 +77,7 @@ export function settlementInput(
     loanResult: calculateLoan(loan),
     deathLoanType: overrides.deathLoanType ?? purchaseLoanType,
     deathYears,
+    priceGrowth: overrides.priceGrowth ?? DEFAULT_PRICE_GROWTH,
     newMortgageCash: 0,
     noteRate: overrides.noteRate ?? DEFAULT_NOTE_RATE,
     noteYears: overrides.noteYears ?? DEFAULT_NOTE_YEARS,

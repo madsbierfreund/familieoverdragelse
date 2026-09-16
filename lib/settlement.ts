@@ -26,6 +26,8 @@ export interface SettlementInput {
   deathLoanType: LoanType;
   /** År fra handlen til farens død. */
   deathYears: number;
+  /** Årlig stigning i boligpriserne. */
+  priceGrowth: number;
   /** Udbetalt beløb på et nyt realkreditlån. */
   newMortgageCash: number;
   /** Rente på pantebrevet pr. år. */
@@ -89,6 +91,8 @@ export interface SettlementResult {
   noteAfterTax: number;
   /** Samlet månedlig ydelse efter skat. */
   totalAfterTax: number;
+  /** Anpartens værdi ved dødsfaldet. */
+  marketValueAtDeath: number;
   /** Friværdi bag realkreditlånene. */
   pledgeRoom: number;
   /** Den del af pantebrevet, der ikke er dækket af friværdi. */
@@ -118,6 +122,7 @@ export function calculateSettlement(
     loanResult,
     deathLoanType,
     deathYears,
+    priceGrowth,
     newMortgageCash,
     noteRate,
     noteYears,
@@ -143,9 +148,13 @@ export function calculateSettlement(
         (existingBalance * loan.contributionRate) / 12
       : 0;
 
+  // Anparten er mere værd ved dødsfaldet, hvis boligpriserne stiger. Kun
+  // belåningen regner med den nye værdi; forskuddet blev opgjort ved handlen.
+  const marketValueAtDeath =
+    loan.marketValue * Math.pow(1 + priceGrowth, deathYear);
   const maxNewPrincipal = Math.max(
     0,
-    MORTGAGE_LTV_MAX * loan.marketValue - existingBalance,
+    MORTGAGE_LTV_MAX * marketValueAtDeath - existingBalance,
   );
   // Det nye lån optages ved dødsfaldet og har sin egen lånetype med dens
   // rente, bidragssats og kurs. En afdragsfri periode starter derfor forfra.
@@ -175,7 +184,7 @@ export function calculateSettlement(
 
   const pledgeRoom = Math.max(
     0,
-    loan.marketValue - existingBalance - newPrincipal,
+    marketValueAtDeath - existingBalance - newPrincipal,
   );
 
   // Renter og bidrag i det første år efter dødsfaldet er fradragsberettigede.
@@ -228,6 +237,7 @@ export function calculateSettlement(
     newAfterTax: newMonthly - (taxSavingYear * share(newDeductible)) / 12,
     noteAfterTax: noteMonthly - (taxSavingYear * share(noteDeductible)) / 12,
     totalAfterTax: totalMonthly - taxSavingYear / 12,
+    marketValueAtDeath,
     pledgeRoom,
     noteUnsecured: Math.max(0, noteAmount - pledgeRoom),
   };

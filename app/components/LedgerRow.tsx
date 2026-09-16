@@ -13,10 +13,10 @@ export default function LedgerRow({
 }: {
   label: string;
   amount: number;
-  /** Et beløb mere i en egen kolonne, fx en månedlig ydelse. */
-  second?: number;
+  /** Et beløb mere i en egen kolonne, fx en månedlig ydelse. null er en tom celle. */
+  second?: number | null;
   /** Endnu et beløb i en egen kolonne, fx ydelsen efter skat. */
-  third?: number;
+  third?: number | null;
   explanation: string;
   total?: boolean;
   negative?: boolean;
@@ -30,10 +30,14 @@ export default function LedgerRow({
           {fmt(amount)} kr.
         </td>
         {second !== undefined && (
-          <td className={styles.amount}>{fmt(second)} kr.</td>
+          <td className={styles.amount}>
+            {second === null ? '' : `${fmt(second)} kr.`}
+          </td>
         )}
         {third !== undefined && (
-          <td className={styles.amount}>{fmt(third)} kr.</td>
+          <td className={styles.amount}>
+            {third === null ? '' : `${fmt(third)} kr.`}
+          </td>
         )}
       </tr>
       <tr className={styles.explanationRow}>

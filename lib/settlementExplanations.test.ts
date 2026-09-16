@@ -3,7 +3,10 @@ import { GIFT_YEARS, SIBLINGS } from './constants';
 import { toTodaysValue } from './inflation';
 import { INTEREST_ONLY_YEARS, LOAN_TYPES } from './loanConstants';
 import { calculateSettlement } from './settlement';
-import { explainSettlement } from './settlementExplanations';
+import {
+  explainSettlement,
+  todaysValueNote,
+} from './settlementExplanations';
 import { DEFAULT_INFLATION_RATE } from './settlementConstants';
 import { settlementInput } from './testFixtures';
 
@@ -69,13 +72,11 @@ describe('explainSettlement i dagens kroner', () => {
     );
   });
 
-  it('lader markedsværdien stå i kroner', () => {
-    expect(today.newMortgageCash).toContain('markedsværdien på 12.000.000 kr.');
-    // Grænsen for det nye lån følger omregningen.
-    expect(amountsIn(today.newMortgageCash)[1]).toBeCloseTo(
-      convert(result.maxNewMortgageCash),
-      0,
-    );
+  it('omregner også anpartens værdi', () => {
+    const [value, limit] = amountsIn(today.newMortgageCash);
+
+    expect(value).toBeCloseTo(convert(result.marketValueAtDeath), 0);
+    expect(limit).toBeCloseTo(convert(result.maxNewMortgageCash), 0);
   });
 
   it('lader teksterne stå uændret uden omregning', () => {
@@ -97,7 +98,9 @@ describe('explainSettlement', () => {
       'Restgælden på gældsbrevet på 2.297.400 kr. plus udligningen på ' +
         '3.702.600 kr., så datteren står lige med sine søskende.',
     );
-    expect(t.newMortgageCash).toContain('op til 80% af markedsværdien');
+    expect(t.newMortgageCash).toContain(
+      'op til 80% af anpartens værdi ved dødsfaldet på 12.000.000 kr.',
+    );
     expect(t.noteAmount).toContain('ikke behov for et pantebrev');
     expect(t.existingMortgage).toContain('efter 5 års afdrag');
   });
@@ -167,6 +170,37 @@ describe('explainSettlement', () => {
       expect(t.existingMortgage).not.toContain('afdragsfrit');
       expect(t.newMortgage).not.toContain('afdragsfri periode');
     }
+  });
+
+  it('forklarer anpartens værdi og friværdien', () => {
+    const flat = texts(DEFAULTS);
+    expect(flat.marketValueAtDeath).toBe('Markedsværdien forudsættes uændret.');
+    expect(flat.pledgeRoom).toBe('Anpartens værdi minus begge realkreditlån.');
+
+    const growing = texts(DEFAULTS, { priceGrowth: 0.02 });
+    expect(growing.marketValueAtDeath).toBe(
+      'Markedsværdien i dag på 12.000.000 kr. med 2,0 % årlig stigning over ' +
+        `${GIFT_YEARS} år. Stigningen tilfalder datteren, fordi forskuddet ` +
+        'opgøres til værdien ved handlen.',
+    );
+
+    // Et pantebrev har pant i friværdien.
+    const withNote = texts(DEFAULTS, { loanType: 'fixedInterestOnly' });
+    expect(withNote.pledgeRoom).toContain(
+      'Pantebrevet til søskendene har pant i denne friværdi.',
+    );
+  });
+
+  it('nævner boligprisstigningen i noten under skyderne', () => {
+    expect(todaysValueNote(0.03, GIFT_YEARS, 0.02)).toContain(
+      'Anpartens værdi stiger med 2,0 % om året.',
+    );
+    expect(todaysValueNote(0.03, GIFT_YEARS, 0)).toContain(
+      'Anpartens værdi forudsættes uændret i kroner.',
+    );
+    expect(todaysValueNote(0, GIFT_YEARS, 0.02)).toBe(
+      'Beløbene er vist i kroner på dødstidspunktet.',
+    );
   });
 
   it('beskriver hvert lån ud fra dets egen lånetype', () => {

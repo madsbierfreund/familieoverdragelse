@@ -8,14 +8,20 @@ import {
 import type { SettlementInput, SettlementResult } from './settlement';
 
 /** Linjen under skyderne, der siger hvilke kroner beløbene er vist i. */
-export function todaysValueNote(rate: number, years: number): string {
+export function todaysValueNote(
+  rate: number,
+  years: number,
+  priceGrowth: number,
+): string {
   if (rate <= 0) return 'Beløbene er vist i kroner på dødstidspunktet.';
 
   return [
     `Beløbene i afsnittet er vist i dagens kroner med`,
     `${decimal(rate * 100, 1, 1)} % årlig inflation over ${years} år.`,
     'Faste ydelser stiger ikke med inflationen, men deres værdi falder.',
-    'Markedsværdien forudsættes uændret i kroner.',
+    priceGrowth > 0
+      ? `Anpartens værdi stiger med ${decimal(priceGrowth * 100, 1, 1)} % om året.`
+      : 'Anpartens værdi forudsættes uændret i kroner.',
   ].join(' ');
 }
 
@@ -26,6 +32,8 @@ export interface SettlementExplanations {
   newMortgageCash: string;
   noteAmount: string;
   existingMortgage: string;
+  marketValueAtDeath: string;
+  pledgeRoom: string;
   newMortgage: string;
   note: string;
   debtTotal: string;
@@ -69,11 +77,11 @@ export function explainSettlement(
       ].join(' ');
 
   const newMortgageCash = [
-    `Anparten kan belånes med op til ${pct(MORTGAGE_LTV_MAX)} af`,
-    `markedsværdien på ${fmt(loan.marketValue)} kr. Efter det eksisterende`,
-    `lån er der plads til højst ${kr(result.maxNewMortgageCash)} kr.`,
-    'udbetalt. Om datteren kan få lånet, afhænger af hendes indkomst og',
-    'långivers kreditvurdering.',
+    `Anparten kan belånes med op til ${pct(MORTGAGE_LTV_MAX)} af anpartens`,
+    `værdi ved dødsfaldet på ${kr(result.marketValueAtDeath)} kr. Efter det`,
+    `eksisterende lån er der plads til højst`,
+    `${kr(result.maxNewMortgageCash)} kr. udbetalt. Om datteren kan få lånet,`,
+    'afhænger af hendes indkomst og långivers kreditvurdering.',
   ].join(' ');
 
   const noteAmount =
@@ -133,6 +141,24 @@ export function explainSettlement(
     ].join(' ');
   }
 
+  const marketValueAtDeath =
+    input.priceGrowth > 0
+      ? [
+          `Markedsværdien i dag på ${kr(loan.marketValue)} kr. med`,
+          `${decimal(input.priceGrowth * 100, 1, 1)} % årlig stigning over`,
+          `${result.deathYear} år. Stigningen tilfalder datteren, fordi`,
+          'forskuddet opgøres til værdien ved handlen.',
+        ].join(' ')
+      : 'Markedsværdien forudsættes uændret.';
+
+  const pledgeRoom =
+    result.noteAmount > 0
+      ? [
+          'Anpartens værdi minus begge realkreditlån. Pantebrevet til',
+          'søskendene har pant i denne friværdi.',
+        ].join(' ')
+      : 'Anpartens værdi minus begge realkreditlån.';
+
   const debtTotal = [
     'Ydelse før skat. Afdraget på pantebrevet giver ikke fradrag.',
     'Efter skat er anslået med samme fradragssatser som ved købet, beregnet',
@@ -160,10 +186,10 @@ export function explainSettlement(
   const siblingTotal = `Svarer til arvelodden på ${kr(inheritance.share)} kr.`;
 
   const footnote = [
-    `Forudsætninger: dødsfald efter ${result.deathYear} år, uændret`,
-    'markedsværdi, nyt lån med samme løbetid som det eksisterende og vilkår',
-    'efter den valgte låntype. Boafgift, boomkostninger og låneomkostninger',
-    'er ikke medregnet.',
+    `Forudsætninger: dødsfald efter ${result.deathYear} år,`,
+    'boligprisstigning efter den valgte sats, nyt lån med samme løbetid som',
+    'det eksisterende og vilkår efter den valgte låntype. Boafgift,',
+    'boomkostninger og låneomkostninger er ikke medregnet.',
   ].join(' ');
 
   return {
@@ -172,6 +198,8 @@ export function explainSettlement(
     newMortgageCash,
     noteAmount,
     existingMortgage,
+    marketValueAtDeath,
+    pledgeRoom,
     newMortgage,
     note,
     debtTotal,
