@@ -1,11 +1,21 @@
-import { SIBLINGS } from './constants';
-import { fmt, pct, ratePct } from './format';
+import { GIFT_YEARS, SIBLINGS } from './constants';
+import { decimal, fmt, pct, ratePct } from './format';
 import {
   INTEREST_ONLY_YEARS,
   LOAN_TYPES,
   MORTGAGE_LTV_MAX,
 } from './loanConstants';
 import type { SettlementInput, SettlementResult } from './settlement';
+
+/** Linjen, der forklarer omregningen til dagens kroner. */
+export function todaysValueNote(rate: number): string {
+  return [
+    `Beløbene er omregnet til dagens kroner med ${decimal(rate * 100, 2, 2)} %`,
+    `årlig inflation over ${GIFT_YEARS} år. Faste ydelser stiger ikke med`,
+    'inflationen, men deres værdi falder. Markedsværdien forudsættes uændret',
+    'i kroner.',
+  ].join(' ');
+}
 
 export interface SettlementExplanations {
   /** Vises i stedet for tabellerne, når datteren intet skylder. */

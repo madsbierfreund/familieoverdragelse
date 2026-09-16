@@ -5,21 +5,67 @@ import { calculate, type CalculationInput } from '@/lib/calculate';
 import { fmt } from '@/lib/format';
 import { calculateLoan, type LoanInput } from '@/lib/loan';
 import { type LoanType, MAX_YEARS, MIN_YEARS } from '@/lib/loanConstants';
+import { GIFT_YEARS } from '@/lib/constants';
+import { toTodaysValue } from '@/lib/inflation';
 import {
   borrowingLimit,
   calculateSettlement,
   type SettlementInput,
+  type SettlementResult,
 } from '@/lib/settlement';
 import {
+  DEFAULT_INFLATION_RATE,
   DEFAULT_NOTE_RATE,
   DEFAULT_NOTE_YEARS,
+  MAX_INFLATION_RATE,
+  MIN_INFLATION_RATE,
 } from '@/lib/settlementConstants';
-import { explainSettlement } from '@/lib/settlementExplanations';
+import {
+  explainSettlement,
+  todaysValueNote,
+} from '@/lib/settlementExplanations';
 import styles from '../page.module.css';
 import LedgerRow from './LedgerRow';
 import LoanTypePicker, { LOAN_TYPES_ANCHOR } from './LoanTypePicker';
 
-type SettlementFieldName = 'newMortgageCash' | 'noteRate' | 'noteYears';
+type SettlementFieldName =
+  | 'newMortgageCash'
+  | 'noteRate'
+  | 'noteYears'
+  | 'inflation';
+
+/** De beløb, afsnittet viser, og som kan omregnes til dagens kroner. */
+const AMOUNT_KEYS = [
+  'daughterOwes',
+  'newMortgageCash',
+  'noteAmount',
+  'existingBalance',
+  'existingMonthly',
+  'existingAfterTax',
+  'newPrincipal',
+  'newMonthly',
+  'newAfterTax',
+  'noteMonthly',
+  'noteAfterTax',
+  'cashPerSibling',
+  'notePerSibling',
+  'siblingTotal',
+  'totalDebt',
+  'totalMonthly',
+  'totalAfterTax',
+] as const satisfies readonly (keyof SettlementResult)[];
+
+/** Omregner de viste beløb til dagens kroner. Beregningen selv rører sig ikke. */
+function inTodaysValue(
+  result: SettlementResult,
+  rate: number,
+): SettlementResult {
+  const converted = { ...result };
+  for (const key of AMOUNT_KEYS) {
+    converted[key] = toTodaysValue(result[key], rate, GIFT_YEARS);
+  }
+  return converted;
+}
 
 const RAW_DEFAULTS: Record<SettlementFieldName, string> = {
   // Udfyldes ved første visning, når belåningsgrænsen er kendt.
@@ -29,10 +75,15 @@ const RAW_DEFAULTS: Record<SettlementFieldName, string> = {
     maximumFractionDigits: 2,
   }),
   noteYears: String(DEFAULT_NOTE_YEARS),
+  inflation: (DEFAULT_INFLATION_RATE * 100).toLocaleString('da-DK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }),
 };
 
 const NEGATIVE_MESSAGE = 'Indtast positive tal.';
 const NOTE_YEARS_MESSAGE = `Afdragsperioden skal være et helt antal år mellem ${MIN_YEARS} og ${MAX_YEARS}.`;
+const INFLATION_MESSAGE = `Inflation skal være mellem ${MIN_INFLATION_RATE * 100} og ${MAX_INFLATION_RATE * 100} %.`;
 
 /** Parser et tal med komma eller punktum som decimalseparator. */
 function parseDecimal(raw: string): number | null {
@@ -46,7 +97,7 @@ function parseDecimal(raw: string): number | null {
 function readField(name: SettlementFieldName, raw: string): number | null {
   const value = parseDecimal(raw);
   if (value === null) return null;
-  return name === 'noteRate' ? value / 100 : value;
+  return name === 'noteRate' || name === 'inflation' ? value / 100 : value;
 }
 
 function errorsFor(
@@ -78,6 +129,14 @@ function errorsFor(
     messages.push(NOTE_YEARS_MESSAGE);
   }
 
+  const inflation = readField('inflation', raw.inflation);
+  if (
+    inflation !== null &&
+    (inflation < MIN_INFLATION_RATE || inflation > MAX_INFLATION_RATE)
+  ) {
+    messages.push(INFLATION_MESSAGE);
+  }
+
   return messages;
 }
 
@@ -106,6 +165,9 @@ export default function SettlementSection({
     noteRate: DEFAULT_NOTE_RATE,
     noteYears: DEFAULT_NOTE_YEARS,
   });
+  // Inflationen ændrer ikke beregningen, kun hvordan beløbene vises.
+  const [inflation, setInflation] = useState(DEFAULT_INFLATION_RATE);
+  const [showToday, setShowToday] = useState(false);
   const [chosenCash, setChosenCash] = useState(0);
 
   const base: Omit<SettlementInput, 'newMortgageCash'> = useMemo(() => {
@@ -152,10 +214,14 @@ export default function SettlementSection({
     () => ({ ...base, newMortgageCash }),
     [base, newMortgageCash],
   );
-  const result = useMemo(() => calculateSettlement(input), [input]);
+  const calculated = useMemo(() => calculateSettlement(input), [input]);
   const explanations = useMemo(
-    () => explainSettlement(input, result),
-    [input, result],
+    () => explainSettlement(input, calculated),
+    [input, calculated],
+  );
+  const result = useMemo(
+    () => (showToday ? inTodaysValue(calculated, inflation) : calculated),
+    [calculated, showToday, inflation],
   );
 
   function update(name: SettlementFieldName, text: string) {
@@ -168,6 +234,8 @@ export default function SettlementSection({
 
     if (name === 'newMortgageCash') {
       setChosenCash(readField(name, text) as number);
+    } else if (name === 'inflation') {
+      setInflation(readField(name, text) as number);
     } else {
       setNote({
         noteRate: readField('noteRate', next.noteRate) as number,
@@ -182,6 +250,9 @@ export default function SettlementSection({
     if (name === 'newMortgageCash') return value > cashLimit;
     if (name === 'noteYears') {
       return !Number.isInteger(value) || value < MIN_YEARS || value > MAX_YEARS;
+    }
+    if (name === 'inflation') {
+      return value < MIN_INFLATION_RATE || value > MAX_INFLATION_RATE;
     }
     return false;
   };
@@ -213,6 +284,11 @@ export default function SettlementSection({
   return (
     <>
       <h2 className={styles.subheading}>Ved farens død: udligning</h2>
+      {showToday && (
+        <p className={`${styles.explanation} ${styles.typeLine}`}>
+          {todaysValueNote(inflation)}
+        </p>
+      )}
 
       <div className={styles.inputs}>
         <div className={styles.field}>
@@ -245,6 +321,20 @@ export default function SettlementSection({
 
         {numberField('noteRate', 'Rente på pantebrev (%)', true)}
         {numberField('noteYears', 'Afdragsperiode (år)')}
+        {numberField('inflation', 'Inflation (%)', true)}
+
+        <div className={styles.fieldPlain}>
+          <label className={styles.label} htmlFor="todaysValue">
+            Vis i dagens kroner
+          </label>
+          <input
+            className={styles.toggle}
+            id="todaysValue"
+            type="checkbox"
+            checked={showToday}
+            onChange={(event) => setShowToday(event.target.checked)}
+          />
+        </div>
 
         <p className={styles.error} role="alert">
           {errors.join(' ')}

@@ -116,6 +116,14 @@
   margin: 0;
 }
 
+.toggle {
+  justify-self: end;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--ink);
+}
+
 .basisExplanation {
   grid-column: 1 / -1;
   margin: 0;
