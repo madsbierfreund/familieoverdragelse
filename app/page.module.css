@@ -116,12 +116,27 @@
   margin: 0;
 }
 
-.toggle {
-  justify-self: end;
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  accent-color: var(--ink);
+/* Skyder med sin værdi og et lille talfelt ved siden af. */
+.sliderRow {
+  display: grid;
+  grid-template-columns: 1fr auto 76px;
+  align-items: center;
+  gap: 12px;
+}
+
+.sliderValue {
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.numberSmall {
+  width: 76px;
+}
+
+.sliderNote {
+  margin: 16px 0 0;
 }
 
 .basisExplanation {
@@ -350,5 +365,14 @@
 
   .typeFields {
     grid-template-columns: 1fr;
+  }
+
+  .sliderRow {
+    grid-template-columns: 1fr auto 68px;
+    gap: 8px;
+  }
+
+  .numberSmall {
+    width: 68px;
   }
 }

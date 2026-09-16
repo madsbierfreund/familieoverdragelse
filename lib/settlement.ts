@@ -1,5 +1,5 @@
 import type { CalculationResult } from './calculate';
-import { GIFT_YEARS, SIBLINGS } from './constants';
+import { SIBLINGS } from './constants';
 import {
   annuity,
   schedule,
@@ -24,6 +24,8 @@ export interface SettlementInput {
   loanResult: LoanResult;
   /** Lånetypen på det nye lån, der optages ved dødsfaldet. */
   deathLoanType: LoanType;
+  /** År fra handlen til farens død. */
+  deathYears: number;
   /** Udbetalt beløb på et nyt realkreditlån. */
   newMortgageCash: number;
   /** Rente på pantebrevet pr. år. */
@@ -115,12 +117,13 @@ export function calculateSettlement(
     loan,
     loanResult,
     deathLoanType,
+    deathYears,
     newMortgageCash,
     noteRate,
     noteYears,
   } = input;
 
-  const deathYear = GIFT_YEARS;
+  const deathYear = deathYears;
   const daughterOwes = inheritance.withAgreement.daughterPays;
   const daughterReceives = inheritance.withAgreement.daughterPaidOut;
 

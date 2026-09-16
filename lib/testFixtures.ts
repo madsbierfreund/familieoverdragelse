@@ -1,4 +1,5 @@
 import { calculate, type CalculationInput } from './calculate';
+import { GIFT_YEARS } from './constants';
 import { PURCHASE_PRICE } from './constants';
 import { calculateLoan, type LoanInput } from './loan';
 import {
@@ -35,6 +36,8 @@ export function loanInput(
 }
 
 interface Overrides {
+  /** År fra handlen til farens død. */
+  deathYears?: number;
   /** Lånetypen ved købet. Sætter også lånet ved dødsfaldet, hvis intet andet. */
   loanType?: LoanType;
   /** Lånetypen ved dødsfaldet, når de to lån skal være forskellige. */
@@ -60,12 +63,14 @@ export function settlementInput(
     ...overrides.loan,
   });
 
+  const deathYears = overrides.deathYears ?? GIFT_YEARS;
   const input: SettlementInput = {
-    inheritance: calculate(values),
+    inheritance: calculate(values, deathYears),
     otherAssets: values.otherAssets,
     loan,
     loanResult: calculateLoan(loan),
     deathLoanType: overrides.deathLoanType ?? purchaseLoanType,
+    deathYears,
     newMortgageCash: 0,
     noteRate: overrides.noteRate ?? DEFAULT_NOTE_RATE,
     noteYears: overrides.noteYears ?? DEFAULT_NOTE_YEARS,

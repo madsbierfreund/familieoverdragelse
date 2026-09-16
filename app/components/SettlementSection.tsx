@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { calculate, type CalculationInput } from '@/lib/calculate';
-import { fmt } from '@/lib/format';
+import { decimal, fmt } from '@/lib/format';
 import { calculateLoan, type LoanInput } from '@/lib/loan';
 import { type LoanType, MAX_YEARS, MIN_YEARS } from '@/lib/loanConstants';
 import { GIFT_YEARS } from '@/lib/constants';
@@ -17,7 +17,9 @@ import {
   DEFAULT_INFLATION_RATE,
   DEFAULT_NOTE_RATE,
   DEFAULT_NOTE_YEARS,
+  MAX_DEATH_YEARS,
   MAX_INFLATION_RATE,
+  MIN_DEATH_YEARS,
   MIN_INFLATION_RATE,
 } from '@/lib/settlementConstants';
 import {
@@ -32,6 +34,7 @@ type SettlementFieldName =
   | 'newMortgageCash'
   | 'noteRate'
   | 'noteYears'
+  | 'deathYears'
   | 'inflation';
 
 /** De beløb, afsnittet viser, og som kan omregnes til dagens kroner. */
@@ -75,15 +78,17 @@ const RAW_DEFAULTS: Record<SettlementFieldName, string> = {
     maximumFractionDigits: 2,
   }),
   noteYears: String(DEFAULT_NOTE_YEARS),
+  deathYears: String(GIFT_YEARS),
   inflation: (DEFAULT_INFLATION_RATE * 100).toLocaleString('da-DK', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
   }),
 };
 
 const NEGATIVE_MESSAGE = 'Indtast positive tal.';
 const NOTE_YEARS_MESSAGE = `Afdragsperioden skal være et helt antal år mellem ${MIN_YEARS} og ${MAX_YEARS}.`;
 const INFLATION_MESSAGE = `Inflation skal være mellem ${MIN_INFLATION_RATE * 100} og ${MAX_INFLATION_RATE * 100} %.`;
+const DEATH_YEARS_MESSAGE = `År til farens død skal være et helt antal mellem ${MIN_DEATH_YEARS} og ${MAX_DEATH_YEARS}.`;
 
 /** Parser et tal med komma eller punktum som decimalseparator. */
 function parseDecimal(raw: string): number | null {
@@ -137,6 +142,16 @@ function errorsFor(
     messages.push(INFLATION_MESSAGE);
   }
 
+  const deathYears = parseDecimal(raw.deathYears);
+  if (
+    deathYears !== null &&
+    (!Number.isInteger(deathYears) ||
+      deathYears < MIN_DEATH_YEARS ||
+      deathYears > MAX_DEATH_YEARS)
+  ) {
+    messages.push(DEATH_YEARS_MESSAGE);
+  }
+
   return messages;
 }
 
@@ -145,8 +160,10 @@ export default function SettlementSection({
   loanInput,
   purchaseLoanType,
   deathLoanType,
+  deathYears,
   onPurchaseLoanTypeChange,
   onDeathLoanTypeChange,
+  onDeathYearsChange,
 }: {
   values: CalculationInput;
   loanInput: LoanInput;
@@ -154,11 +171,16 @@ export default function SettlementSection({
   purchaseLoanType: LoanType;
   /** Lånetypen på det nye lån, der optages ved dødsfaldet. */
   deathLoanType: LoanType;
+  /** År fra handlen til farens død. */
+  deathYears: number;
   onPurchaseLoanTypeChange: (loanType: LoanType) => void;
   onDeathLoanTypeChange: (loanType: LoanType) => void;
+  onDeathYearsChange: (years: number) => void;
 }) {
-  const [raw, setRaw] =
-    useState<Record<SettlementFieldName, string>>(RAW_DEFAULTS);
+  const [raw, setRaw] = useState<Record<SettlementFieldName, string>>(() => ({
+    ...RAW_DEFAULTS,
+    deathYears: String(deathYears),
+  }));
   // Så længe feltet ikke er rørt, følger det nye lån belåningsgrænsen.
   const [touched, setTouched] = useState(false);
   const [note, setNote] = useState({
@@ -167,20 +189,21 @@ export default function SettlementSection({
   });
   // Inflationen ændrer ikke beregningen, kun hvordan beløbene vises.
   const [inflation, setInflation] = useState(DEFAULT_INFLATION_RATE);
-  const [showToday, setShowToday] = useState(false);
+
   const [chosenCash, setChosenCash] = useState(0);
 
   const base: Omit<SettlementInput, 'newMortgageCash'> = useMemo(() => {
     const loanResult = calculateLoan(loanInput);
     return {
-      inheritance: calculate(values),
+      inheritance: calculate(values, deathYears),
       otherAssets: values.otherAssets,
       loan: loanInput,
       loanResult,
       deathLoanType,
+      deathYears,
       ...note,
     };
-  }, [values, loanInput, deathLoanType, note]);
+  }, [values, loanInput, deathLoanType, deathYears, note]);
 
   // Grænsen afhænger ikke af det valgte beløb, så den kan læses af en prøve.
   // Den skæres til hele kroner og bruges både til feltet, skyderen og
@@ -195,6 +218,12 @@ export default function SettlementSection({
   );
 
   const errors = errorsFor(raw, cashLimit);
+
+  // Årstallet bor i siden, så feltet følger med, når skyderen flyttes. Et
+  // ugyldigt tal bliver stående, så fejlen kan læses.
+  if (errors.length === 0 && raw.deathYears !== String(deathYears)) {
+    setRaw({ ...raw, deathYears: String(deathYears) });
+  }
 
   const newMortgageCash = touched
     ? Math.min(chosenCash, cashLimit)
@@ -220,14 +249,14 @@ export default function SettlementSection({
   // stemmer med beløbene over den.
   const convert = useMemo(
     () =>
-      showToday
-        ? (amount: number) => toTodaysValue(amount, inflation, GIFT_YEARS)
+      inflation > 0
+        ? (amount: number) => toTodaysValue(amount, inflation, deathYears)
         : (amount: number) => amount,
-    [showToday, inflation],
+    [inflation, deathYears],
   );
   const result = useMemo(
-    () => (showToday ? mapAmounts(calculated, convert) : calculated),
-    [calculated, showToday, convert],
+    () => (inflation > 0 ? mapAmounts(calculated, convert) : calculated),
+    [calculated, inflation, convert],
   );
   const explanations = useMemo(
     () => explainSettlement(input, calculated, convert),
@@ -246,6 +275,8 @@ export default function SettlementSection({
       setChosenCash(readField(name, text) as number);
     } else if (name === 'inflation') {
       setInflation(readField(name, text) as number);
+    } else if (name === 'deathYears') {
+      onDeathYearsChange(readField(name, text) as number);
     } else {
       setNote({
         noteRate: readField('noteRate', next.noteRate) as number,
@@ -264,8 +295,63 @@ export default function SettlementSection({
     if (name === 'inflation') {
       return value < MIN_INFLATION_RATE || value > MAX_INFLATION_RATE;
     }
+    if (name === 'deathYears') {
+      return (
+        !Number.isInteger(value) ||
+        value < MIN_DEATH_YEARS ||
+        value > MAX_DEATH_YEARS
+      );
+    }
     return false;
   };
+
+  const sliderField = (
+    name: SettlementFieldName,
+    label: string,
+    {
+      min,
+      max,
+      step,
+      value,
+      display,
+    }: {
+      min: number;
+      max: number;
+      step: number;
+      value: number;
+      display: string;
+    },
+  ) => (
+    <div className={styles.typeField} key={name}>
+      <label className={styles.label} htmlFor={`${name}-number`}>
+        {label}
+      </label>
+      <div className={styles.sliderRow}>
+        <input
+          className={styles.slider}
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          aria-label={`${label} – skyder`}
+          onChange={(event) => update(name, event.target.value)}
+        />
+        <span className={styles.sliderValue}>{display}</span>
+        <input
+          className={`${styles.number} ${styles.numberSmall}${
+            fieldInvalid(name) ? ` ${styles.numberInvalid}` : ''
+          }`}
+          id={`${name}-number`}
+          type="text"
+          inputMode="decimal"
+          value={raw[name]}
+          aria-invalid={fieldInvalid(name)}
+          onChange={(event) => update(name, event.target.value)}
+        />
+      </div>
+    </div>
+  );
 
   const numberField = (
     name: SettlementFieldName,
@@ -294,11 +380,6 @@ export default function SettlementSection({
   return (
     <>
       <h2 className={styles.subheading}>Ved farens død: udligning</h2>
-      {showToday && (
-        <p className={`${styles.explanation} ${styles.typeLine}`}>
-          {todaysValueNote(inflation)}
-        </p>
-      )}
 
       <div className={styles.inputs}>
         <div className={styles.field}>
@@ -331,20 +412,6 @@ export default function SettlementSection({
 
         {numberField('noteRate', 'Rente på pantebrev (%)', true)}
         {numberField('noteYears', 'Afdragsperiode (år)')}
-        {numberField('inflation', 'Inflation (%)', true)}
-
-        <div className={styles.fieldPlain}>
-          <label className={styles.label} htmlFor="todaysValue">
-            Vis i dagens kroner
-          </label>
-          <input
-            className={styles.toggle}
-            id="todaysValue"
-            type="checkbox"
-            checked={showToday}
-            onChange={(event) => setShowToday(event.target.checked)}
-          />
-        </div>
 
         <p className={styles.error} role="alert">
           {errors.join(' ')}
@@ -428,6 +495,28 @@ export default function SettlementSection({
             onChange={onDeathLoanTypeChange}
           />
         </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.typeFields}>
+          {sliderField('deathYears', 'År til farens død', {
+            min: MIN_DEATH_YEARS,
+            max: MAX_DEATH_YEARS,
+            step: 1,
+            value: deathYears,
+            display: `${deathYears} år`,
+          })}
+          {sliderField('inflation', 'Inflation', {
+            min: MIN_INFLATION_RATE * 100,
+            max: MAX_INFLATION_RATE * 100,
+            step: 0.5,
+            value: inflation * 100,
+            display: `${decimal(inflation * 100, 1, 1)} %`,
+          })}
+        </div>
+        <p className={`${styles.explanation} ${styles.sliderNote}`}>
+          {todaysValueNote(inflation, deathYears)}
+        </p>
       </section>
 
       {result.daughterOwes !== 0 && (

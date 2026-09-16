@@ -1,11 +1,44 @@
 import { describe, expect, it } from 'vitest';
 import { calculate } from './calculate';
-import { MAX_FORGIVEN, PURCHASE_PRICE, SIBLINGS } from './constants';
+import {
+  GIFT_YEARS,
+  MAX_FORGIVEN,
+  PURCHASE_PRICE,
+  SIBLINGS,
+} from './constants';
 
 describe('constants', () => {
   it('udleder købesummen efter 20%-reglen', () => {
     expect(PURCHASE_PRICE).toBe(6_700_400);
     expect(MAX_FORGIVEN).toBe(403_000);
+  });
+});
+
+describe('calculate med et andet dødsår', () => {
+  const values = {
+    marketValue: 12_000_000,
+    otherAssets: 2_000_000,
+    ownFinancing: 4_000_000,
+  };
+
+  it('eftergiver et år mere for hvert år til dødsfaldet', () => {
+    expect(calculate(values, 5).forgiven).toBe(403_000);
+    expect(calculate(values, 10).forgiven).toBe(806_000);
+    expect(calculate(values, 10).remainingDebt).toBe(1_894_400);
+    expect(calculate(values, 20).forgiven).toBe(1_612_000);
+    expect(calculate(values, 30).forgiven).toBe(2_418_000);
+  });
+
+  it('eftergiver aldrig mere end gældsbrevet', () => {
+    const r = calculate({ ...values, ownFinancing: 6_500_000 }, 30);
+
+    expect(r.promissoryNote).toBe(200_400);
+    expect(r.forgiven).toBe(200_400);
+    expect(r.remainingDebt).toBe(0);
+  });
+
+  it('bruger fem år, når intet andet er valgt', () => {
+    expect(calculate(values)).toEqual(calculate(values, GIFT_YEARS));
   });
 });
 

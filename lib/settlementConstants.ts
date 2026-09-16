@@ -12,3 +12,7 @@ export const DEFAULT_INFLATION_RATE = 0.03;
 /** Tilladt inflation pr. år. */
 export const MIN_INFLATION_RATE = 0;
 export const MAX_INFLATION_RATE = 0.1;
+
+/** Tilladt antal år fra handlen til farens død. */
+export const MIN_DEATH_YEARS = 1;
+export const MAX_DEATH_YEARS = 30;

@@ -1,6 +1,7 @@
 import {
+  ANNUAL_GIFT_ALLOWANCE,
   CHILDREN,
-  MAX_FORGIVEN,
+  GIFT_YEARS,
   PURCHASE_PRICE,
   SIBLINGS,
 } from './constants';
@@ -58,11 +59,15 @@ export interface CalculationResult {
  * Beregner arvefordelingen mellem datteren og hendes søskende.
  * Ren funktion uden afhængigheder til UI.
  */
-export function calculate(input: CalculationInput): CalculationResult {
+export function calculate(
+  input: CalculationInput,
+  /** År fra handlen til farens død, og dermed antal eftergivelser. */
+  deathYears: number = GIFT_YEARS,
+): CalculationResult {
   const { marketValue, otherAssets, ownFinancing } = input;
 
   const promissoryNote = PURCHASE_PRICE - ownFinancing;
-  const forgiven = Math.min(MAX_FORGIVEN, promissoryNote);
+  const forgiven = Math.min(deathYears * ANNUAL_GIFT_ALLOWANCE, promissoryNote);
   const remainingDebt = promissoryNote - forgiven;
 
   const benefit = Math.max(0, marketValue - PURCHASE_PRICE);

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { CalculationInput } from '@/lib/calculate';
+import { GIFT_YEARS } from '@/lib/constants';
 import type { LoanInput } from '@/lib/loan';
 import { DEFAULT_LOAN_TYPE, type LoanType } from '@/lib/loanConstants';
 import InheritanceSection from './components/InheritanceSection';
@@ -24,6 +25,8 @@ export default function Page() {
     useState<LoanType>(DEFAULT_LOAN_TYPE);
   const [deathLoanType, setDeathLoanType] =
     useState<LoanType>(DEFAULT_LOAN_TYPE);
+  // Året for dødsfaldet bestemmer både eftergivelserne og udligningen.
+  const [deathYears, setDeathYears] = useState(GIFT_YEARS);
   const [loanInput, setLoanInput] = useState<LoanInput>({
     ...LOAN_DEFAULTS,
     loanType: DEFAULT_LOAN_TYPE,
@@ -33,7 +36,11 @@ export default function Page() {
 
   return (
     <main className={styles.main}>
-      <InheritanceSection values={values} onChange={setValues} />
+      <InheritanceSection
+        values={values}
+        deathYears={deathYears}
+        onChange={setValues}
+      />
 
       <LoanSection
         marketValue={values.marketValue}
@@ -46,6 +53,8 @@ export default function Page() {
         loanInput={loanInput}
         purchaseLoanType={purchaseLoanType}
         deathLoanType={deathLoanType}
+        deathYears={deathYears}
+        onDeathYearsChange={setDeathYears}
         onPurchaseLoanTypeChange={setPurchaseLoanType}
         onDeathLoanTypeChange={setDeathLoanType}
       />

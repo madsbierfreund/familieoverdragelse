@@ -6,7 +6,13 @@ import {
   type LoanType,
   MORTGAGE_LTV_MAX,
 } from './loanConstants';
+import {
+  MAX_DEATH_YEARS,
+  MIN_DEATH_YEARS,
+} from './settlementConstants';
+import { toTodaysValue } from './inflation';
 import { borrowingLimit, calculateSettlement } from './settlement';
+import { DEFAULT_INFLATION_RATE } from './settlementConstants';
 import { settlementInput } from './testFixtures';
 
 const DEFAULTS = {
@@ -31,6 +37,49 @@ describe('borrowingLimit', () => {
   it('lader hele kroner stå', () => {
     expect(borrowingLimit(6_000_000)).toBe(6_000_000);
     expect(borrowingLimit(0)).toBe(0);
+  });
+});
+
+describe('calculateSettlement med et andet dødsår', () => {
+  const at = (deathYears: number) =>
+    calculateSettlement(settlementInput(DEFAULTS, { deathYears }));
+
+  it('afdrager lånet længere, når dødsfaldet ligger senere', () => {
+    const ten = at(10);
+
+    expect(ten.daughterOwes).toBe(6_000_000);
+    expect(ten.existingBalance).toBeCloseTo(2_952_304.79, 2);
+    expect(ten.existingMonthly).toBeCloseTo(19_386.21, 2);
+    expect(ten.newMonthly).toBeCloseTo(32_349.85, 2);
+    expect(ten.totalMonthly).toBeCloseTo(51_736.06, 2);
+
+    const twenty = at(20);
+    expect(twenty.existingBalance).toBeCloseTo(1_771_276.32, 2);
+    expect(twenty.totalMonthly).toBeCloseTo(51_175.07, 2);
+  });
+
+  it('har intet eksisterende lån tilbage efter hele løbetiden', () => {
+    const thirty = at(30);
+
+    expect(thirty.existingBalance).toBeCloseTo(0, 0);
+    expect(thirty.existingMonthly).toBe(0);
+    expect(thirty.totalMonthly).toBeCloseTo(32_349.85, 2);
+  });
+
+  it('lader det skyldige beløb være det samme uanset dødsår', () => {
+    for (let years = MIN_DEATH_YEARS; years <= MAX_DEATH_YEARS; years++) {
+      expect(at(years).daughterOwes).toBeCloseTo(6_000_000, 2);
+    }
+  });
+
+  it('viser ydelsen i dagens kroner for hvert dødsår', () => {
+    const shown = (years: number) =>
+      toTodaysValue(at(years).totalMonthly, DEFAULT_INFLATION_RATE, years);
+
+    expect(shown(5)).toBeCloseTo(44_806, 0);
+    expect(shown(10)).toBeCloseTo(38_496, 0);
+    expect(shown(20)).toBeCloseTo(28_334, 0);
+    expect(shown(30)).toBeCloseTo(13_328, 0);
   });
 });
 

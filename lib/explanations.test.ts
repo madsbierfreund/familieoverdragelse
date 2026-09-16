@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { calculate, type CalculationInput } from './calculate';
 import { PURCHASE_PRICE } from './constants';
-import { explain, INPUT_EXPLANATIONS, INTRO } from './explanations';
+import {
+  explain,
+  inheritanceFootnote,
+  INPUT_EXPLANATIONS,
+  INTRO,
+} from './explanations';
 
 function texts(input: CalculationInput) {
   return explain(input, calculate(input));
@@ -148,6 +153,32 @@ describe('explain', () => {
     });
 
     expect(t.status).toContain('Beløbene går lige op.');
+  });
+
+  it('følger dødsåret i teksterne om eftergivelser', () => {
+    const values = {
+      marketValue: 12_000_000,
+      otherAssets: 2_000_000,
+      ownFinancing: 4_000_000,
+    };
+
+    expect(explain(values, calculate(values, 10), 10).forgiven).toContain(
+      'Beregningen antager ti års eftergivelser.',
+    );
+    expect(explain(values, calculate(values, 13), 13).forgiven).toContain(
+      'Beregningen antager 13 års eftergivelser.',
+    );
+    expect(inheritanceFootnote(10)).toContain('ti års eftergivelser');
+    expect(inheritanceFootnote(5)).toContain('fem års eftergivelser');
+
+    // Teksterne må ikke holde fast i de fem år.
+    for (const text of [
+      explain(values, calculate(values, 10), 10).forgiven,
+      inheritanceFootnote(10),
+    ]) {
+      expect(text).not.toContain('fem års');
+      expect(text).not.toContain('5 ×');
+    }
   });
 
   it('forklarer de tre øverste input', () => {

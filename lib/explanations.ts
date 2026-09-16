@@ -3,7 +3,6 @@ import {
   ANNUAL_GIFT_ALLOWANCE,
   CHILDREN,
   GIFT_YEARS,
-  MAX_FORGIVEN,
   PRICE_FACTOR,
   PUBLIC_VALUATION,
   PURCHASE_PRICE,
@@ -35,6 +34,8 @@ const NUMBER_WORDS = [
   'otte',
   'ni',
   'ti',
+  'elleve',
+  'tolv',
 ];
 
 /** Skriver små tal med bogstaver, så teksterne læser som almindeligt dansk. */
@@ -61,6 +62,15 @@ export const INPUT_EXPLANATIONS = {
   ].join(' '),
 };
 
+/** Fodnoten under arveafsnittet. */
+export function inheritanceFootnote(deathYears: number): string {
+  return [
+    `Faste forudsætninger: 2020-vurdering ${fmt(PUBLIC_VALUATION)} kr.,`,
+    `anpartsbrøk 50/100, ${numberWord(deathYears)} års eftergivelser, ugift`,
+    'far, ingen boafgift eller boomkostninger.',
+  ].join(' ');
+}
+
 /** Indledningen på siden. */
 export const INTRO = `Fordeling mellem datteren og ${numberWord(
   SIBLINGS,
@@ -73,6 +83,8 @@ export const INTRO = `Fordeling mellem datteren og ${numberWord(
 export function explain(
   input: CalculationInput,
   result: CalculationResult,
+  /** År fra handlen til farens død, og dermed antal eftergivelser. */
+  deathYears: number = GIFT_YEARS,
 ): Explanations {
   const { marketValue, otherAssets, ownFinancing } = input;
 
@@ -106,7 +118,7 @@ export function explain(
   let forgiven: string;
   if (result.forgiven === 0) {
     forgiven = 'Der er ingen gæld at eftergive.';
-  } else if (result.forgiven < MAX_FORGIVEN) {
+  } else if (result.forgiven < deathYears * ANNUAL_GIFT_ALLOWANCE) {
     forgiven = [
       `${allowance}, men gældsbrevet er kun på`,
       `${fmt(result.promissoryNote)} kr., så eftergivelsen begrænses hertil.`,
@@ -115,7 +127,7 @@ export function explain(
   } else {
     forgiven = [
       `${allowance}.`,
-      `Beregningen antager ${numberWord(GIFT_YEARS)} års eftergivelser.`,
+      `Beregningen antager ${numberWord(deathYears)} års eftergivelser.`,
       gift,
     ].join(' ');
   }

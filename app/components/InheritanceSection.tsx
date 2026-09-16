@@ -2,8 +2,13 @@
 
 import { useMemo, useState } from 'react';
 import { calculate, type CalculationInput } from '@/lib/calculate';
-import { PUBLIC_VALUATION, PURCHASE_PRICE } from '@/lib/constants';
-import { explain, INPUT_EXPLANATIONS, INTRO } from '@/lib/explanations';
+import { PURCHASE_PRICE } from '@/lib/constants';
+import {
+  explain,
+  inheritanceFootnote,
+  INPUT_EXPLANATIONS,
+  INTRO,
+} from '@/lib/explanations';
 import { fmt } from '@/lib/format';
 import styles from '../page.module.css';
 import LedgerRow from './LedgerRow';
@@ -70,9 +75,12 @@ function errorsFor(raw: Record<FieldName, string>): string[] {
 }
 export default function InheritanceSection({
   values,
+  deathYears,
   onChange,
 }: {
   values: CalculationInput;
+  /** År fra handlen til farens død, som styrer antallet af eftergivelser. */
+  deathYears: number;
   onChange: (values: CalculationInput) => void;
 }) {
   // `values` er altid det senest gyldige input, så resultaterne bliver
@@ -84,8 +92,14 @@ export default function InheritanceSection({
   }));
 
   const errors = errorsFor(raw);
-  const result = useMemo(() => calculate(values), [values]);
-  const explanations = useMemo(() => explain(values, result), [values, result]);
+  const result = useMemo(
+    () => calculate(values, deathYears),
+    [values, deathYears],
+  );
+  const explanations = useMemo(
+    () => explain(values, result, deathYears),
+    [values, result, deathYears],
+  );
 
   function update(name: FieldName, text: string) {
     const next = { ...raw, [name]: text };
@@ -318,11 +332,7 @@ export default function InheritanceSection({
         </table>
       </section>
 
-      <p className={styles.footnote}>
-        Faste forudsætninger: 2020-vurdering {fmt(PUBLIC_VALUATION)} kr.,
-        anpartsbrøk 50/100, fem års eftergivelser, ugift far, ingen boafgift
-        eller boomkostninger.
-      </p>
+      <p className={styles.footnote}>{inheritanceFootnote(deathYears)}</p>
     </>
   );
 }
