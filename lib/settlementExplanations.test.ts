@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { GIFT_YEARS, SIBLINGS } from './constants';
+import { toTodaysValue } from './inflation';
 import { INTEREST_ONLY_YEARS, LOAN_TYPES } from './loanConstants';
 import { calculateSettlement } from './settlement';
 import { explainSettlement } from './settlementExplanations';
+import { DEFAULT_INFLATION_RATE } from './settlementConstants';
 import { settlementInput } from './testFixtures';
 
 const DEFAULTS = {
@@ -18,6 +20,74 @@ function texts(
   const input = settlementInput(values, overrides);
   return explainSettlement(input, calculateSettlement(input));
 }
+
+/** Læser de danske beløb ud af en sætning, så den kan efterregnes. */
+function amountsIn(text: string): number[] {
+  return [...text.matchAll(/([\d.]+) kr\./g)].map((match) =>
+    Number(match[1].replaceAll('.', '')),
+  );
+}
+
+describe('explainSettlement i dagens kroner', () => {
+  const input = settlementInput(DEFAULTS);
+  const result = calculateSettlement(input);
+  const convert = (amount: number) =>
+    toTodaysValue(amount, DEFAULT_INFLATION_RATE, GIFT_YEARS);
+  const today = explainSettlement(input, result, convert);
+
+  it('lader hver sætning stemme med beløbet over den', () => {
+    const [otherAssets, cashToEstate] = amountsIn(today.cashPerSibling);
+
+    expect((otherAssets + cashToEstate) / SIBLINGS).toBeCloseTo(
+      convert(result.cashPerSibling),
+      0,
+    );
+  });
+
+  it('omregner de øvrige beløb i teksterne', () => {
+    expect(amountsIn(today.siblingTotal)[0]).toBeCloseTo(
+      convert(result.siblingTotal),
+      0,
+    );
+    expect(amountsIn(today.debtTotal)[0]).toBeCloseTo(
+      convert(result.totalDeductible),
+      0,
+    );
+  });
+
+  it('omregner pantebrevet til hver søskende', () => {
+    // Et afdragsfrit lån ved købet levner et pantebrev at fordele.
+    const withNote = settlementInput(DEFAULTS, {
+      loanType: 'fixedInterestOnly',
+    });
+    const noteResult = calculateSettlement(withNote);
+    const texts = explainSettlement(withNote, noteResult, convert);
+
+    expect(amountsIn(texts.noteAmount)[0]).toBeCloseTo(
+      convert(noteResult.notePerSibling),
+      0,
+    );
+  });
+
+  it('lader markedsværdien stå i kroner', () => {
+    expect(today.newMortgageCash).toContain('markedsværdien på 12.000.000 kr.');
+    // Grænsen for det nye lån følger omregningen.
+    expect(amountsIn(today.newMortgageCash)[1]).toBeCloseTo(
+      convert(result.maxNewMortgageCash),
+      0,
+    );
+  });
+
+  it('lader teksterne stå uændret uden omregning', () => {
+    expect(explainSettlement(input, result)).toEqual(
+      explainSettlement(input, result, (amount) => amount),
+    );
+    expect(explainSettlement(input, result).cashPerSibling).toBe(
+      'Farens øvrige formue på 2.000.000 kr. plus det kontante beløb fra ' +
+        `datteren på 6.000.000 kr., delt mellem ${SIBLINGS} søskende.`,
+    );
+  });
+});
 
 describe('explainSettlement', () => {
   it('forklarer hvad datteren skylder boet', () => {

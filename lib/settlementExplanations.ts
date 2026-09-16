@@ -40,32 +40,36 @@ export interface SettlementExplanations {
 export function explainSettlement(
   input: SettlementInput,
   result: SettlementResult,
+  /** Omregner beløb, fx til dagens kroner. Uden den står beløbene som de er. */
+  convert: (amount: number) => number = (amount) => amount,
 ): SettlementExplanations {
   const { inheritance, otherAssets, loan, deathLoanType, noteRate, noteYears } =
     input;
+  // Beløb, der følger omregningen. Markedsværdien gør ikke, jf. noten.
+  const kr = (amount: number) => fmt(convert(amount));
 
   const noSettlement =
     'Datterens arv dækker restgælden. Hun skal ikke betale noget til boet' +
     (result.daughterReceives > 0
-      ? `, men får ${fmt(result.daughterReceives)} kr. udbetalt.`
+      ? `, men får ${kr(result.daughterReceives)} kr. udbetalt.`
       : '.');
 
   const daughterOwes = inheritance.advanceCovered
     ? [
-        `Restgælden på gældsbrevet på ${fmt(inheritance.remainingDebt)} kr.`,
+        `Restgælden på gældsbrevet på ${kr(inheritance.remainingDebt)} kr.`,
         `minus datterens arv på`,
-        `${fmt(inheritance.share - inheritance.advance)} kr.`,
+        `${kr(inheritance.share - inheritance.advance)} kr.`,
       ].join(' ')
     : [
-        `Restgælden på gældsbrevet på ${fmt(inheritance.remainingDebt)} kr.`,
-        `plus udligningen på ${fmt(inheritance.excess)} kr., så datteren står`,
+        `Restgælden på gældsbrevet på ${kr(inheritance.remainingDebt)} kr.`,
+        `plus udligningen på ${kr(inheritance.excess)} kr., så datteren står`,
         'lige med sine søskende.',
       ].join(' ');
 
   const newMortgageCash = [
     `Anparten kan belånes med op til ${pct(MORTGAGE_LTV_MAX)} af`,
     `markedsværdien på ${fmt(loan.marketValue)} kr. Efter det eksisterende`,
-    `lån er der plads til højst ${fmt(result.maxNewMortgageCash)} kr.`,
+    `lån er der plads til højst ${kr(result.maxNewMortgageCash)} kr.`,
     'udbetalt. Om datteren kan få lånet, afhænger af hendes indkomst og',
     'långivers kreditvurdering.',
   ].join(' ');
@@ -74,7 +78,7 @@ export function explainSettlement(
     result.noteAmount > 0
       ? [
           'Resten afvikles over for søskendene med et pantebrev i anparten,',
-          `fordelt med ${fmt(result.notePerSibling)} kr. til hver.`,
+          `fordelt med ${kr(result.notePerSibling)} kr. til hver.`,
         ].join(' ')
       : 'Hele beløbet dækkes af det nye realkreditlån, så der er ikke behov for et pantebrev.';
 
@@ -121,8 +125,8 @@ export function explainSettlement(
   if (result.noteUnsecured > 0) {
     note += [
       '',
-      `Friværdien bag realkreditlånene er kun ${fmt(result.pledgeRoom)} kr.,`,
-      `så ${fmt(result.noteUnsecured)} kr. af pantebrevet er uden reel`,
+      `Friværdien bag realkreditlånene er kun ${kr(result.pledgeRoom)} kr.,`,
+      `så ${kr(result.noteUnsecured)} kr. af pantebrevet er uden reel`,
       'sikkerhed.',
     ].join(' ');
   }
@@ -132,14 +136,14 @@ export function explainSettlement(
     'Efter skat er anslået med samme fradragssatser som ved købet, beregnet',
     'af datterens samlede renter og bidrag i det første år efter dødsfaldet',
     'og fordelt på lånene efter deres andel af fradraget. Fradragsberettiget',
-    `i alt ca. ${fmt(result.totalDeductible)} kr. om året.`,
+    `i alt ca. ${kr(result.totalDeductible)} kr. om året.`,
   ].join(' ');
 
   const cashPerSibling = [
-    `Farens øvrige formue på ${fmt(otherAssets)} kr. plus det kontante beløb`,
-    `fra datteren på ${fmt(result.cashToEstate)} kr.`,
+    `Farens øvrige formue på ${kr(otherAssets)} kr. plus det kontante beløb`,
+    `fra datteren på ${kr(result.cashToEstate)} kr.`,
     result.daughterReceives > 0
-      ? `, minus ${fmt(result.daughterReceives)} kr. udbetalt til datteren,`
+      ? `, minus ${kr(result.daughterReceives)} kr. udbetalt til datteren,`
       : ',',
     `delt mellem ${SIBLINGS} søskende.`,
   ]
@@ -151,7 +155,7 @@ export function explainSettlement(
       ? `Afdrages over ${noteYears} år.`
       : 'Intet pantebrev.';
 
-  const siblingTotal = `Svarer til arvelodden på ${fmt(inheritance.share)} kr.`;
+  const siblingTotal = `Svarer til arvelodden på ${kr(inheritance.share)} kr.`;
 
   const footnote = [
     `Forudsætninger: dødsfald efter ${result.deathYear} år, uændret`,

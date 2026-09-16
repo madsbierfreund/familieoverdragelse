@@ -55,14 +55,14 @@ const AMOUNT_KEYS = [
   'totalAfterTax',
 ] as const satisfies readonly (keyof SettlementResult)[];
 
-/** Omregner de viste beløb til dagens kroner. Beregningen selv rører sig ikke. */
-function inTodaysValue(
+/** Omregner de viste beløb. Beregningen selv rører sig ikke. */
+function mapAmounts(
   result: SettlementResult,
-  rate: number,
+  convert: (amount: number) => number,
 ): SettlementResult {
   const converted = { ...result };
   for (const key of AMOUNT_KEYS) {
-    converted[key] = toTodaysValue(result[key], rate, GIFT_YEARS);
+    converted[key] = convert(result[key]);
   }
   return converted;
 }
@@ -215,13 +215,23 @@ export default function SettlementSection({
     [base, newMortgageCash],
   );
   const calculated = useMemo(() => calculateSettlement(input), [input]);
-  const explanations = useMemo(
-    () => explainSettlement(input, calculated),
-    [input, calculated],
+
+  // Både tallene og teksterne omregnes af den samme funktion, så hver sætning
+  // stemmer med beløbene over den.
+  const convert = useMemo(
+    () =>
+      showToday
+        ? (amount: number) => toTodaysValue(amount, inflation, GIFT_YEARS)
+        : (amount: number) => amount,
+    [showToday, inflation],
   );
   const result = useMemo(
-    () => (showToday ? inTodaysValue(calculated, inflation) : calculated),
-    [calculated, showToday, inflation],
+    () => (showToday ? mapAmounts(calculated, convert) : calculated),
+    [calculated, showToday, convert],
+  );
+  const explanations = useMemo(
+    () => explainSettlement(input, calculated, convert),
+    [input, calculated, convert],
   );
 
   function update(name: SettlementFieldName, text: string) {
