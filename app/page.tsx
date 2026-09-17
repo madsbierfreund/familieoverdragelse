@@ -3,11 +3,17 @@
 import { useState } from 'react';
 import type { CalculationInput } from '@/lib/calculate';
 import { GIFT_YEARS } from '@/lib/constants';
+import {
+  DEFAULT_NOTE_RATE,
+  DEFAULT_NOTE_YEARS,
+  DEFAULT_PRICE_GROWTH,
+} from '@/lib/settlementConstants';
 import type { LoanInput } from '@/lib/loan';
 import { DEFAULT_LOAN_TYPE, type LoanType } from '@/lib/loanConstants';
 import InheritanceSection from './components/InheritanceSection';
 import LoanSection, { LOAN_DEFAULTS } from './components/LoanSection';
 import SettlementSection from './components/SettlementSection';
+import ValueLinkedSection from './components/ValueLinkedSection';
 import styles from './page.module.css';
 
 const DEFAULTS: CalculationInput = {
@@ -27,6 +33,12 @@ export default function Page() {
     useState<LoanType>(DEFAULT_LOAN_TYPE);
   // Året for dødsfaldet bestemmer både eftergivelserne og udligningen.
   const [deathYears, setDeathYears] = useState(GIFT_YEARS);
+  // Den værdiregulerede gæld regner på de samme satser som udligningen.
+  const [shared, setShared] = useState({
+    priceGrowth: DEFAULT_PRICE_GROWTH,
+    noteRate: DEFAULT_NOTE_RATE,
+    noteYears: DEFAULT_NOTE_YEARS,
+  });
   const [loanInput, setLoanInput] = useState<LoanInput>({
     ...LOAN_DEFAULTS,
     loanType: DEFAULT_LOAN_TYPE,
@@ -57,6 +69,15 @@ export default function Page() {
         onDeathYearsChange={setDeathYears}
         onPurchaseLoanTypeChange={setPurchaseLoanType}
         onDeathLoanTypeChange={setDeathLoanType}
+        onSharedChange={setShared}
+      />
+      <ValueLinkedSection
+        values={values}
+        loanInput={loanInput}
+        deathYears={deathYears}
+        priceGrowth={shared.priceGrowth}
+        noteRate={shared.noteRate}
+        noteYears={shared.noteYears}
       />
     </main>
   );

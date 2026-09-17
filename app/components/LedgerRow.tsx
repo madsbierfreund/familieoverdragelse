@@ -10,6 +10,7 @@ export default function LedgerRow({
   explanation,
   total = false,
   negative = false,
+  display,
 }: {
   label: string;
   amount: number;
@@ -20,14 +21,15 @@ export default function LedgerRow({
   explanation: string;
   total?: boolean;
   negative?: boolean;
+  /** Vises i stedet for beløbet, fx en procentdel. */
+  display?: string;
 }) {
   return (
     <>
       <tr className={`${styles.rowMain}${total ? ` ${styles.total}` : ''}`}>
         <th scope="row">{label}</th>
         <td className={styles.amount}>
-          {negative ? '−' : ''}
-          {fmt(amount)} kr.
+          {display ?? `${negative ? '−' : ''}${fmt(amount)} kr.`}
         </td>
         {second !== undefined && (
           <td className={styles.amount}>

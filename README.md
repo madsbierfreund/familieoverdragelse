@@ -39,12 +39,17 @@ Everything runs client-side: no backend, no database, no API routes.
 - `lib/settlement.test.ts` — unit tests for the settlement
 - `lib/settlementExplanations.ts` — `explainSettlement(input, result)`, its texts
 - `lib/settlementExplanations.test.ts` — unit tests for those texts
+- `lib/valueLinked.ts` — `calculateValueLinked(input)`, the value-linked debt
+- `lib/valueLinked.test.ts` — unit tests for that debt
+- `lib/valueLinkedExplanations.ts` — `explainValueLinked(input, result)`, its texts
+- `lib/valueLinkedExplanations.test.ts` — unit tests for those texts
 - `lib/testFixtures.ts` — shared test setup for the loan and the settlement
 - `app/page.tsx` — the shell: the state the calculators share, and the two loan type choices
 - `app/components/LoanTypePicker.tsx` — one loan's type choice, used twice
 - `app/components/InheritanceSection.tsx` — the inheritance calculator UI
 - `app/components/LoanSection.tsx` — the financing calculator UI
 - `app/components/SettlementSection.tsx` — the settlement calculator UI
+- `app/components/ValueLinkedSection.tsx` — the value-linked debt UI
 - `app/components/LedgerRow.tsx` — a table row with its explanation
 - `app/layout.tsx` — document shell, fonts and metadata
 

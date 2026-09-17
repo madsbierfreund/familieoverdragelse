@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { calculate, type CalculationInput } from '@/lib/calculate';
 import { decimal, fmt } from '@/lib/format';
 import { calculateLoan, type LoanInput } from '@/lib/loan';
@@ -185,6 +185,7 @@ export default function SettlementSection({
   onPurchaseLoanTypeChange,
   onDeathLoanTypeChange,
   onDeathYearsChange,
+  onSharedChange,
 }: {
   values: CalculationInput;
   loanInput: LoanInput;
@@ -197,6 +198,12 @@ export default function SettlementSection({
   onPurchaseLoanTypeChange: (loanType: LoanType) => void;
   onDeathLoanTypeChange: (loanType: LoanType) => void;
   onDeathYearsChange: (years: number) => void;
+  /** Melder de værdier op, som den værdiregulerede gæld også regner på. */
+  onSharedChange: (shared: {
+    priceGrowth: number;
+    noteRate: number;
+    noteYears: number;
+  }) => void;
 }) {
   const [raw, setRaw] = useState<Record<SettlementFieldName, string>>(() => ({
     ...RAW_DEFAULTS,
@@ -266,6 +273,14 @@ export default function SettlementSection({
     () => ({ ...base, newMortgageCash }),
     [base, newMortgageCash],
   );
+  const shared = useMemo(
+    () => ({ priceGrowth, noteRate: note.noteRate, noteYears: note.noteYears }),
+    [priceGrowth, note],
+  );
+  useEffect(() => {
+    onSharedChange(shared);
+  }, [shared, onSharedChange]);
+
   const calculated = useMemo(() => calculateSettlement(input), [input]);
 
   // Både tallene og teksterne omregnes af den samme funktion, så hver sætning
